@@ -1,0 +1,29 @@
+name: Tenon 检查与构建
+
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  check:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v7
+      - name: 准备 Rust
+        run: rustup toolchain install stable --profile minimal --component rustfmt --component clippy
+      - name: 检查格式
+        run: cargo +stable fmt --all --check
+      - name: 静态检查
+        run: cargo +stable clippy --workspace --locked --all-targets -- -D warnings
+      - name: 编译检查
+        run: cargo +stable check --workspace --locked
+      - name: 构建工作区
+        run: cargo +stable build --workspace --locked --release
