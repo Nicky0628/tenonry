@@ -152,9 +152,13 @@ async fn run_with_timeout(
     }
     #[cfg(windows)]
     command.creation_flags(0x0800_0000); // CREATE_NO_WINDOW
-    let mut child = command.spawn().map_err(|error| {
-        Error::command_failed(format!("无法启动 {}：{error}", program.display()))
-    })?;
+    let display_name = program
+        .file_name()
+        .and_then(|name| name.to_str())
+        .unwrap_or("命令");
+    let mut child = command
+        .spawn()
+        .map_err(|error| Error::command_failed(format!("无法启动 {display_name}：{error}")))?;
     let stdout = child
         .stdout
         .take()
@@ -192,9 +196,9 @@ async fn run_with_timeout(
     if mutation {
         collect.await
     } else {
-        tokio::time::timeout(timeout, collect).await.map_err(|_| {
-            Error::command_failed(format!("检测 {} 超时，请稍后重新检查。", program.display()))
-        })?
+        tokio::time::timeout(timeout, collect)
+            .await
+            .map_err(|_| Error::command_failed(format!("检测 {display_name} 超时，请稍后重试。")))?
     }
 }
 

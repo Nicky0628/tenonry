@@ -4,19 +4,38 @@ use crate::model::{Executable, ExecutableSource, Identity, ToolSpec};
 use std::collections::{BTreeMap, BTreeSet};
 use std::path::{Path, PathBuf};
 
+/// Normalize display/resolved paths on Windows by removing verbatim `\\?\`
+/// prefixes for drive/UNC paths and unifying separators to `\`.
+pub(crate) fn clean_path(path: &Path) -> PathBuf {
+    #[cfg(windows)]
+    {
+        let text = path.to_string_lossy().replace('/', "\\");
+        if let Some(unc) = text
+            .strip_prefix(r"\\?\UNC\")
+            .or_else(|| text.strip_prefix(r"\\?\unc\"))
+        {
+            return PathBuf::from(format!(r"\\{unc}"));
+        }
+        if let Some(rest) = text.strip_prefix(r"\\?\") {
+            let bytes = rest.as_bytes();
+            if bytes.len() >= 3 && bytes[0].is_ascii_alphabetic() && &bytes[1..3] == b":\\" {
+                return PathBuf::from(rest);
+            }
+        }
+        PathBuf::from(text)
+    }
+    #[cfg(not(windows))]
+    {
+        path.to_path_buf()
+    }
+}
+
 /// Compare command directories using Windows' case and extended-path conventions.
 pub(crate) fn same_path(left: &Path, right: &Path) -> bool {
     #[cfg(windows)]
     {
-        let normalize = |path: &Path| {
-            let text = path.to_string_lossy().replace('/', "\\").to_lowercase();
-            if let Some(unc) = text.strip_prefix(r"\\?\unc\") {
-                format!(r"\\{unc}")
-            } else {
-                text.strip_prefix(r"\\?\").unwrap_or(&text).to_owned()
-            }
-        };
-        normalize(left) == normalize(right)
+        clean_path(left).to_string_lossy().to_lowercase()
+            == clean_path(right).to_string_lossy().to_lowercase()
     }
     #[cfg(not(windows))]
     {
@@ -52,9 +71,8 @@ pub(crate) fn search_directories() -> Vec<PathBuf> {
     }
     if let Some(home) = std::env::var_os("HOME").or_else(|| std::env::var_os("USERPROFILE")) {
         let home = PathBuf::from(home);
-        for suffix in [".local/bin", ".cargo/bin"] {
-            directories.push(home.join(suffix));
-        }
+        directories.push(home.join(".local").join("bin"));
+        directories.push(home.join(".cargo").join("bin"));
     }
     let mut seen = BTreeSet::new();
     directories.retain(|path| seen.insert(path.clone()));
@@ -67,7 +85,7 @@ pub(crate) fn find(program: &str) -> Option<PathBuf> {
 }
 
 pub(crate) fn resolved(path: &Path) -> PathBuf {
-    std::fs::canonicalize(path).unwrap_or_else(|_| path.to_path_buf())
+    clean_path(&std::fs::canonicalize(path).unwrap_or_else(|_| path.to_path_buf()))
 }
 
 fn active_on_path(spec: &ToolSpec) -> Vec<(String, PathBuf)> {
@@ -139,7 +157,7 @@ async fn inspect_entry(
         return None;
     }
     Some(Executable {
-        path: path.to_string_lossy().into(),
+        path: clean_path(path).to_string_lossy().into(),
         resolved_path: resolved(path).to_string_lossy().into(),
         program,
         version,
@@ -262,8 +280,16 @@ fn file_identity(path: &Path, canonical: &Path) -> String {
         if let Ok(metadata) = path.metadata() {
             return format!("{}:{}", metadata.dev(), metadata.ino());
         }
+        canonical.to_string_lossy().into()
     }
-    #[cfg(not(unix))]
-    let _ = path;
-    canonical.to_string_lossy().into()
+    #[cfg(windows)]
+    {
+        let _ = path;
+        clean_path(canonical).to_string_lossy().to_lowercase()
+    }
+    #[cfg(not(any(unix, windows)))]
+    {
+        let _ = path;
+        canonical.to_string_lossy().into()
+    }
 }

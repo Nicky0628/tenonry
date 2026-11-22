@@ -162,7 +162,11 @@ ConvertTo-Json -InputObject $result -Depth 4 -Compress
 pub(super) async fn collect_inventory() -> Result<RegistryInventory> {
     let system = std::env::var_os("SystemRoot")
         .ok_or_else(|| Error::internal("无法确定 Windows 系统目录。"))?;
-    let powershell = PathBuf::from(system).join("System32/WindowsPowerShell/v1.0/powershell.exe");
+    let powershell = PathBuf::from(system)
+        .join("System32")
+        .join("WindowsPowerShell")
+        .join("v1.0")
+        .join("powershell.exe");
     let text = process::run(
         &powershell,
         &process::args(&[
@@ -460,7 +464,12 @@ impl InstalledApplication {
         let mut files: Vec<PathBuf> = directories
             .into_iter()
             .filter(|path| path.is_absolute())
-            .flat_map(|directory| names.iter().map(move |name| directory.join(name)))
+            .flat_map(|directory| {
+                names.iter().map(move |name| {
+                    name.split('/')
+                        .fold(directory.clone(), |acc, part| acc.join(part))
+                })
+            })
             .filter(|path| paths::is_executable(path))
             .collect();
         if !bundled {
