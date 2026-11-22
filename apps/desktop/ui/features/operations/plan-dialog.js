@@ -77,9 +77,9 @@ export function renderPlanDialog(host, modal, state, handlers) {
             disabled: modal.loading || modal.starting,
             on: { change: () => handlers.toggleBatchTool(id) },
           }),
-          el('strong', { text: tool?.name || id }),
+          el('strong', { className: 'checkbox-label', text: tool?.name || id }),
           tool?.owner
-            ? el('span', { className: 'record-path', text: backendLabel(tool.owner) })
+            ? el('span', { className: 'record-path checkbox-meta', text: backendLabel(tool.owner) })
             : null
         )
       );

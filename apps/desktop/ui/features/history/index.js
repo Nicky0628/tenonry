@@ -32,7 +32,12 @@ export function renderHistoryView(container, state, handlers) {
           { className: 'hero-title-row' },
           el('h1', { className: 'view-title', text: '任务记录' }),
           ops.length > 0
-            ? el('span', { className: 'hero-ratio' }, el('span', { text: `${ops.length} 条记录` }))
+            ? el(
+                'span',
+                { className: 'hero-ratio' },
+                el('span', { className: 'hero-ratio-num', text: String(ops.length) }),
+                el('span', { className: 'hero-ratio-unit', text: '条记录' })
+              )
             : null
         ),
         el('p', {
@@ -112,8 +117,9 @@ export function renderHistoryView(container, state, handlers) {
             'div',
             { className: 'timeline-meta tabular' },
             el('span', { text: badge.label }),
-            el('span', { text: '·' }),
+            el('span', { className: 'status-sep', text: '·' }),
             el('span', { text: formatTimestamp(op.startedAt) }),
+            el('span', { className: 'status-sep', text: '·' }),
             el('span', { text: formatDuration(op.elapsedMs) })
           )
         )

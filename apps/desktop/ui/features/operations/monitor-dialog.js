@@ -252,7 +252,7 @@ export function renderMonitorDialog(host, modal, state, handlers) {
       el(
         'div',
         { className: 'tech-details-body' },
-        copyLogBtn ? el('div', { className: 'inline-copy-row' }, copyLogBtn) : null,
+        copyLogBtn ? el('div', { className: 'inline-copy-row is-end' }, copyLogBtn) : null,
         logPre
       )
     )

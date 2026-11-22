@@ -31,7 +31,9 @@ export function renderBackendsView(container, state, handlers) {
                 'span',
                 { className: 'hero-ratio' },
                 el('span', { className: 'hero-ratio-num', text: String(availableCount) }),
-                el('span', { text: `/ ${backends.length} 可用` })
+                el('span', { className: 'hero-ratio-sep', text: '/' }),
+                el('span', { className: 'hero-ratio-den', text: String(backends.length) }),
+                el('span', { className: 'hero-ratio-unit', text: '可用' })
               )
             : null
         ),
@@ -255,6 +257,6 @@ function capItem(label, supported) {
     'span',
     { className: `cap-item${supported ? '' : ' is-dim'}` },
     el('span', { className: 'cap-mark', text: supported ? '✓' : '—' }),
-    label
+    el('span', { className: 'cap-label', text: label })
   );
 }

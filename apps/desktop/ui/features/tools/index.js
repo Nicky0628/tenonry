@@ -210,7 +210,9 @@ export function renderToolsView(container, state, handlers) {
             'span',
             { className: 'hero-ratio', title: '已安装工具 / 支持工具总数' },
             readyNumNode,
-            el('span', { text: `/ ${stats.total} 就绪` })
+            el('span', { className: 'hero-ratio-sep', text: '/' }),
+            el('span', { className: 'hero-ratio-den', text: String(stats.total) }),
+            el('span', { className: 'hero-ratio-unit', text: '就绪' })
           )
         ),
         el('p', { className: 'view-subtitle tabular', text: subtitleText })
@@ -493,26 +495,40 @@ function renderToolRow(tool, update, checkingThis, isSelected, taskLocked, index
   const statusLine = el(
     'div',
     { className: `status-inline ${primaryTone}` },
-    checkingThis
-      ? el('span', { className: 'spinner' })
-      : el('span', { className: 'status-inline-dot' }),
-    el('span', { text: tool.isProbeOnly ? `${sourceBadge.label} · 识别归属中…` : sourceBadge.label })
+    el(
+      'span',
+      { className: 'status-indicator', attrs: { 'aria-hidden': 'true' } },
+      checkingThis
+        ? el('span', { className: 'spinner' })
+        : el('span', { className: 'status-inline-dot' })
+    ),
+    el('span', { className: 'status-source', text: sourceBadge.label })
   );
 
-  if (!tool.isProbeOnly) {
-    if (checkingThis) {
-      statusLine.appendChild(el('span', { className: 'status-sep', text: '·' }));
-      statusLine.appendChild(el('span', { className: 'status-tail is-info', text: '检查更新' }));
-    } else if (update?.state === 'available') {
-      statusLine.appendChild(el('span', { className: 'status-sep', text: '·' }));
-      statusLine.appendChild(el('span', { className: 'status-tail is-info', text: '可更新' }));
-    } else if (update?.state === 'current') {
-      statusLine.appendChild(el('span', { className: 'status-sep', text: '·' }));
-      statusLine.appendChild(el('span', { className: 'status-tail is-ok', text: '已最新' }));
-    } else if (update?.state === 'failed') {
-      statusLine.appendChild(el('span', { className: 'status-sep', text: '·' }));
-      statusLine.appendChild(el('span', { className: 'status-tail is-danger', text: '检查失败' }));
-    }
+  let hasStatusTail = false;
+  if (tool.isProbeOnly) {
+    statusLine.appendChild(el('span', { className: 'status-sep', text: '·' }));
+    statusLine.appendChild(el('span', { className: 'status-tail', text: '识别归属中…' }));
+    hasStatusTail = true;
+  } else if (checkingThis) {
+    statusLine.appendChild(el('span', { className: 'status-sep', text: '·' }));
+    statusLine.appendChild(el('span', { className: 'status-tail is-info', text: '检查更新' }));
+    hasStatusTail = true;
+  } else if (update?.state === 'available') {
+    statusLine.appendChild(el('span', { className: 'status-sep', text: '·' }));
+    statusLine.appendChild(el('span', { className: 'status-tail is-info', text: '可更新' }));
+    hasStatusTail = true;
+  } else if (update?.state === 'current') {
+    statusLine.appendChild(el('span', { className: 'status-sep', text: '·' }));
+    statusLine.appendChild(el('span', { className: 'status-tail is-ok', text: '已最新' }));
+    hasStatusTail = true;
+  } else if (update?.state === 'failed') {
+    statusLine.appendChild(el('span', { className: 'status-sep', text: '·' }));
+    statusLine.appendChild(el('span', { className: 'status-tail is-danger', text: '检查失败' }));
+    hasStatusTail = true;
+  }
+  if (hasStatusTail) {
+    statusLine.classList.add('has-tail');
   }
   statusCell.appendChild(statusLine);
 
@@ -539,7 +555,7 @@ function renderToolRow(tool, update, checkingThis, isSelected, taskLocked, index
     );
   }
 
-  // Minimal focused actions: quiet secondary ("版本") on left, aligned primary CTA ("更新"/"安装"), quiet "详情" anchored on right
+  // Minimal focused actions: fixed 3-slot alignment ("版本" | primary CTA | "详情")
   const actionsCell = el('div', { className: 'tool-actions-cell' });
   if (!tool.isProbeOnly) {
     if (tool.canSelectVersion) {
@@ -548,7 +564,7 @@ function renderToolRow(tool, update, checkingThis, isSelected, taskLocked, index
           'button',
           {
             type: 'button',
-            className: 'btn btn-ghost btn-sm row-quiet-action',
+            className: 'btn btn-ghost btn-sm row-quiet-action action-slot-version',
             disabled: taskLocked,
             on: {
               click: (event) => {
@@ -568,7 +584,7 @@ function renderToolRow(tool, update, checkingThis, isSelected, taskLocked, index
           'button',
           {
             type: 'button',
-            className: 'btn btn-soft btn-sm',
+            className: 'btn btn-soft btn-sm action-slot-primary',
             disabled: taskLocked,
             on: {
               click: (event) => {
@@ -592,7 +608,7 @@ function renderToolRow(tool, update, checkingThis, isSelected, taskLocked, index
           'button',
           {
             type: 'button',
-            className: 'btn btn-primary btn-sm',
+            className: 'btn btn-primary btn-sm action-slot-primary',
             disabled: taskLocked,
             on: {
               click: (event) => {
@@ -616,7 +632,7 @@ function renderToolRow(tool, update, checkingThis, isSelected, taskLocked, index
           'button',
           {
             type: 'button',
-            className: 'btn btn-ghost btn-sm',
+            className: 'btn btn-ghost btn-sm action-slot-primary',
             disabled: checkingThis,
             on: {
               click: (event) => {
@@ -637,7 +653,7 @@ function renderToolRow(tool, update, checkingThis, isSelected, taskLocked, index
       'button',
       {
         type: 'button',
-        className: 'btn btn-ghost btn-sm row-quiet-action',
+        className: 'btn btn-ghost btn-sm row-quiet-action action-slot-detail',
         disabled: Boolean(tool.isPlaceholder),
         on: {
           click: (event) => {
