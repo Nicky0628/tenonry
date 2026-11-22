@@ -1,0 +1,29 @@
+[package]
+name = "tenon-desktop"
+version.workspace = true
+edition.workspace = true
+publish.workspace = true
+description = "Tenon standalone desktop environment manager"
+default-run = "tenon"
+
+[[bin]]
+name = "tenon"
+path = "src/main.rs"
+
+[features]
+default = ["custom-protocol"]
+custom-protocol = ["tauri/custom-protocol"]
+
+[dependencies]
+tenon.workspace = true
+serde.workspace = true
+tokio.workspace = true
+url.workspace = true
+tauri.workspace = true
+tauri-plugin-single-instance.workspace = true
+
+[target.'cfg(target_os = "linux")'.dependencies]
+rustix = { version = "1", features = ["process"] }
+
+[build-dependencies]
+tauri-build.workspace = true

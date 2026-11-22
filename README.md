@@ -29,7 +29,12 @@ tenon/
 │           ├── registry/       # 与包管理器无关的工具目录与通用规则
 │           ├── backend/        # BackendDriver 契约与各后端纵向实现
 │           └── engine/         # 探测、更新、版本、计划、执行、核验与任务日志
-└── apps/                       # 预留给独立桌面 GUI
+├── apps/
+│   └── desktop/                # 独立 Tauri 2 桌面应用（原生 HTML/CSS/ES Modules）
+│       ├── src/                # 单实例、来源校验、IPC 适配与任务关闭保护
+│       └── ui/                 # 工具、后端与软件源、任务记录及操作弹窗界面
+└── scripts/
+    └── check-ui.mjs            # 界面 ES 模块语法与静态资源引用检查
 ```
 
 ## 使用
@@ -67,13 +72,29 @@ async fn main() -> tenon::Result<()> {
 
 `Tenon::new` 接收调用方指定的数据目录，构造时不触发磁盘 I/O。任务记录、各后端软件源缓存与跨进程锁分别位于数据目录下的 `operations.json`、`catalog/<backend>/` 和 `tenon.lock`。克隆实例共享缓存与任务状态；可通过 `with_operation_limits` 注入共享 Tokio 信号量协调并发。
 
+## 独立桌面端
+
+`apps/desktop` 基于 Tauri 2 与原生 HTML/CSS/ES Modules 构建（无前端打包器与框架依赖），按需启动、单实例运行、关闭主窗口即退出，不常驻托盘或后台守护进程：
+
+- **工具视图**：启动先离线快速探测，随后识别来源与包管理器归属并静默异步检查更新；支持按状态与关键字筛选、单工具详情抽屉、版本选择、单条与跨后端批量计划审阅、实时阶段/日志监控。
+- **后端与软件源视图**：展示各平台包管理器可用状态、能力矩阵、托管工具与手动刷新软件源，以及本地数据目录与运行诊断信息。
+- **任务记录视图**：持久查看最近操作记录，分开呈现命令执行结果、系统核验结果与结构化错误类别，支持中断/异常任务的只读状态复核。
+- **外观与保护**：默认跟随系统浅色/深色主题并支持手动切换；任务执行期间阻止误关主窗口并提示当前进度。
+
 ## 构建与检查
 
 ```sh
+node scripts/check-ui.mjs
 cargo fmt --all --check
 cargo clippy --workspace --locked --all-targets -- -D warnings
 cargo check --workspace --locked
 cargo build --workspace --locked --release
+```
+
+直接启动桌面应用：
+
+```sh
+cargo run -p tenon-desktop --release
 ```
 
 贡献与架构约定见 [CONTRIBUTING.md](CONTRIBUTING.md)。

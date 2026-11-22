@@ -1,0 +1,27 @@
+{
+  "$schema": "../gen/schemas/desktop-schema.json",
+  "identifier": "main-window",
+  "description": "Only the bundled main window can inspect and manage development tools.",
+  "windows": ["main"],
+  "permissions": [
+    "allow-app-info",
+    "allow-set-window-theme",
+    "allow-probe-report",
+    "allow-system-report",
+    "allow-selected-report",
+    "allow-refresh-catalog",
+    "allow-list-versions",
+    "allow-check-updates",
+    "allow-check-update",
+    "allow-prepare-plan",
+    "allow-prepare-batch",
+    "allow-start-request",
+    "allow-start-batch",
+    "allow-operations",
+    "allow-operation",
+    "allow-latest-operation",
+    "allow-recheck-operation",
+    "core:event:allow-listen",
+    "core:event:allow-unlisten"
+  ]
+}

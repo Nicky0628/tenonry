@@ -1,6 +1,6 @@
 [workspace]
-members = ["crates/tenon"]
-default-members = ["crates/tenon"]
+members = ["crates/tenon", "apps/desktop"]
+default-members = ["crates/tenon", "apps/desktop"]
 resolver = "3"
 
 [workspace.package]
@@ -20,6 +20,9 @@ fs2 = "0.4"
 which = "8"
 tempfile = "3"
 rustix = { version = "1", features = ["fs"] }
+tauri = "2"
+tauri-build = "2"
+tauri-plugin-single-instance = "2"
 
 [profile.release]
 lto = "thin"

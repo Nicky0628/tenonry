@@ -1,0 +1,133 @@
+<!DOCTYPE html>
+<html lang="zh-CN" data-theme="system">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Tenon</title>
+  <link rel="stylesheet" href="shared/styles.css">
+</head>
+<body>
+  <div class="app-shell">
+    <aside class="sidebar" aria-label="主导航">
+      <div class="brand">
+        <svg class="brand-mark" viewBox="0 0 512 512" width="26" height="26" aria-hidden="true">
+          <rect x="24" y="24" width="464" height="464" rx="106" fill="#181b22" stroke="rgba(255,255,255,0.14)" stroke-width="10"/>
+          <rect x="112" y="124" width="288" height="74" rx="18" fill="#f4f6fa"/>
+          <rect x="112" y="224" width="74" height="164" rx="18" fill="#7c8599"/>
+          <rect x="326" y="224" width="74" height="164" rx="18" fill="#7c8599"/>
+          <rect x="214" y="216" width="84" height="172" rx="18" fill="#5b8cff"/>
+          <rect x="232" y="142" width="48" height="38" rx="10" fill="#5b8cff"/>
+        </svg>
+        <div class="brand-text">
+          <span class="brand-name">Tenon</span>
+          <span class="brand-sub">开发环境</span>
+        </div>
+      </div>
+
+      <nav class="nav-track" id="nav-track" role="navigation" aria-label="视图切换">
+        <div class="sliding-pill nav-indicator" id="nav-sliding-pill" aria-hidden="true"></div>
+
+        <button type="button" class="nav-item is-active" data-nav="tools">
+          <svg class="nav-icon" viewBox="0 0 20 20" fill="none" aria-hidden="true">
+            <rect x="3" y="3" width="6" height="6" rx="1.6" stroke="currentColor" stroke-width="1.5"/>
+            <rect x="11" y="3" width="6" height="6" rx="1.6" stroke="currentColor" stroke-width="1.5"/>
+            <rect x="3" y="11" width="6" height="6" rx="1.6" stroke="currentColor" stroke-width="1.5"/>
+            <circle cx="14" cy="14" r="3" stroke="currentColor" stroke-width="1.5"/>
+          </svg>
+          <span class="nav-label">工具</span>
+          <span class="nav-count is-hidden" id="nav-badge-tools"></span>
+        </button>
+
+        <button type="button" class="nav-item" data-nav="backends">
+          <svg class="nav-icon" viewBox="0 0 20 20" fill="none" aria-hidden="true">
+            <rect x="3" y="3.5" width="14" height="5" rx="1.6" stroke="currentColor" stroke-width="1.5"/>
+            <rect x="3" y="11.5" width="14" height="5" rx="1.6" stroke="currentColor" stroke-width="1.5"/>
+            <circle cx="6.25" cy="6" r="0.9" fill="currentColor"/>
+            <circle cx="6.25" cy="14" r="0.9" fill="currentColor"/>
+          </svg>
+          <span class="nav-label">后端与软件源</span>
+          <span class="nav-count is-hidden" id="nav-badge-backends"></span>
+        </button>
+
+        <button type="button" class="nav-item" data-nav="history">
+          <svg class="nav-icon" viewBox="0 0 20 20" fill="none" aria-hidden="true">
+            <circle cx="10" cy="10" r="6.75" stroke="currentColor" stroke-width="1.5"/>
+            <path d="M10 6.5V10l2.5 1.75" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+          </svg>
+          <span class="nav-label">任务记录</span>
+          <span class="nav-count is-hidden" id="nav-badge-history"></span>
+        </button>
+      </nav>
+
+      <div class="sidebar-spacer"></div>
+
+      <div class="sidebar-footer">
+        <div class="sidebar-status" id="sidebar-meta">
+          <span class="status-dot" aria-hidden="true"></span>
+          <span class="sidebar-status-text" id="sidebar-meta-text">正在探测…</span>
+        </div>
+
+        <div class="sidebar-theme-row">
+          <span class="sidebar-theme-label">外观</span>
+          <div class="theme-icons" id="theme-switch" role="radiogroup" aria-label="界面主题">
+            <div class="sliding-pill theme-indicator" id="theme-sliding-pill" aria-hidden="true"></div>
+            <button type="button" class="theme-icon-btn is-active" data-theme-value="system" role="radio" aria-checked="true" title="跟随系统主题" aria-label="跟随系统主题">
+              <svg viewBox="0 0 18 18" width="14" height="14" fill="none" aria-hidden="true">
+                <rect x="2.5" y="3.2" width="13" height="9" rx="1.6" stroke="currentColor" stroke-width="1.4"/>
+                <path d="M6.5 14.8h5M9 12.2v2.6" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/>
+              </svg>
+            </button>
+            <button type="button" class="theme-icon-btn" data-theme-value="light" role="radio" aria-checked="false" title="浅色外观" aria-label="浅色外观">
+              <svg viewBox="0 0 18 18" width="14" height="14" fill="none" aria-hidden="true">
+                <circle cx="9" cy="9" r="3.1" stroke="currentColor" stroke-width="1.4"/>
+                <path d="M9 2.3v1.6M9 14.1v1.6M2.3 9h1.6M14.1 9h1.6M4.3 4.3l1.1 1.1M12.6 12.6l1.1 1.1M13.7 4.3l-1.1 1.1M5.4 12.6l-1.1 1.1" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/>
+              </svg>
+            </button>
+            <button type="button" class="theme-icon-btn" data-theme-value="dark" role="radio" aria-checked="false" title="深色外观" aria-label="深色外观">
+              <svg viewBox="0 0 18 18" width="14" height="14" fill="none" aria-hidden="true">
+                <path d="M14.4 10.7A5.6 5.6 0 0 1 7.3 3.6a5.8 5.8 0 1 0 7.1 7.1Z" stroke="currentColor" stroke-width="1.4" stroke-linejoin="round"/>
+              </svg>
+            </button>
+          </div>
+        </div>
+      </div>
+    </aside>
+
+    <div class="workspace">
+      <div class="banner-host" id="banner-host" aria-live="polite"></div>
+      <main class="view-host" id="view-host"></main>
+
+      <div class="command-dock-wrap">
+        <div class="command-dock" id="command-dock" role="region" aria-label="快捷检索与动态状态栏">
+          <label class="dock-search" for="dock-search-input">
+            <svg class="dock-search-icon" viewBox="0 0 20 20" fill="none" aria-hidden="true">
+              <circle cx="9" cy="9" r="5.5" stroke="currentColor" stroke-width="1.6"/>
+              <path d="M13.2 13.2 16.8 16.8" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/>
+            </svg>
+            <input
+              id="dock-search-input"
+              type="search"
+              class="dock-search-input"
+              placeholder="搜索工具、包名或后端…"
+              autocomplete="off"
+              spellcheck="false"
+              aria-label="快捷搜索工具"
+            >
+            <button type="button" class="dock-clear-btn is-hidden" id="dock-clear-btn" aria-label="清空搜索">×</button>
+            <kbd class="dock-kbd" id="dock-kbd">Ctrl K</kbd>
+          </label>
+          <div class="dock-action-slot" id="dock-action-slot"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="drawer-backdrop" id="drawer-backdrop" aria-hidden="true"></div>
+  <aside class="detail-drawer" id="detail-drawer" role="dialog" aria-modal="true" aria-label="工具详情" aria-hidden="true"></aside>
+
+  <div class="modal-host" id="modal-host" aria-hidden="true"></div>
+  <div class="toast-host" id="toast-host" aria-live="polite" aria-atomic="true"></div>
+
+  <script type="module" src="app.js"></script>
+</body>
+</html>
