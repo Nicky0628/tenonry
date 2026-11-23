@@ -1,3 +1,5 @@
+<div align="center">
+
 # tenonry
 
 [![Crates.io](https://img.shields.io/crates/v/tenonry.svg)](https://crates.io/crates/tenonry)
@@ -5,6 +7,8 @@
 [![License](https://img.shields.io/crates/l/tenonry.svg)](https://github.com/Nicky0628/tenonry#license)
 
 Cross-platform development tool discovery, multi-backend package coordination, and verifiable task execution.
+
+</div>
 
 Built on top of existing system and ecosystem package managers (`APT`, `DNF`, `pacman`, `WinGet`, and `npm`), `tenonry` provides offline `PATH` probing, installation ownership attribution, version queries, preflight plan generation, multi-backend batch orchestration, task journals, and post-execution verification.
 

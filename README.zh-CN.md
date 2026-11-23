@@ -1,3 +1,5 @@
+<div align="center">
+
 # Tenonry
 
 [English](README.md) | 简体中文
@@ -7,7 +9,11 @@
 [![Documentation](https://docs.rs/tenonry/badge.svg)](https://docs.rs/tenonry)
 [![License](https://img.shields.io/crates/l/tenonry.svg)](#开源协议)
 
-跨平台开发工具环境协调库与桌面工具（Cargo Workspace）。建立在现有系统包管理器与生态包管理器之上，提供工具探测、安装来源归属、版本查询、计划预检、多后端批量编排、任务日志与结果复核。
+跨平台开发工具环境协调库与独立桌面工具
+
+</div>
+
+基于 Cargo Workspace 构建，建立在现有系统包管理器与生态包管理器之上，提供工具探测、安装来源归属、版本查询、计划预检、多后端批量编排、任务日志与结果复核。
 
 ## 支持范围
 

@@ -1,3 +1,5 @@
+<div align="center">
+
 # Tenonry
 
 English | [简体中文](README.zh-CN.md)
@@ -7,7 +9,11 @@ English | [简体中文](README.zh-CN.md)
 [![Documentation](https://docs.rs/tenonry/badge.svg)](https://docs.rs/tenonry)
 [![License](https://img.shields.io/crates/l/tenonry.svg)](#license)
 
-Cross-platform development tool environment coordination library and standalone desktop manager (Cargo Workspace). Built on top of existing system and ecosystem package managers, Tenonry provides tool probing, installation ownership attribution, version queries, preflight plans, multi-backend batch orchestration, task journals, and post-execution verification.
+Cross-platform development tool environment coordination library and standalone desktop manager.
+
+</div>
+
+Built on top of existing system and ecosystem package managers in a single Cargo Workspace, Tenonry provides tool probing, installation ownership attribution, version queries, preflight plans, multi-backend batch orchestration, task journals, and post-execution verification.
 
 ## Supported Scope
 
