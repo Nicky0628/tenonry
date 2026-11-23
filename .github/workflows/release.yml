@@ -1,0 +1,76 @@
+name: Tenonry 发布桌面安装包
+
+on:
+  push:
+    tags:
+      - 'v*'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  publish-desktop:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-24.04, windows-latest]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 24
+          package-manager-cache: false
+      - name: 校验标签与版本号一致
+        if: startsWith(github.ref, 'refs/tags/v')
+        shell: bash
+        run: |
+          node -e '
+            const fs = require("node:fs");
+            const tag = process.env.GITHUB_REF_NAME;
+            const tauriVersion = JSON.parse(fs.readFileSync("apps/desktop/tauri.conf.json", "utf8")).version;
+            const cargoMatch = fs.readFileSync("Cargo.toml", "utf8").match(/^version\s*=\s*"([^"]+)"/m);
+            const cargoVersion = cargoMatch && cargoMatch[1];
+            if (tag !== "v" + tauriVersion || tag !== "v" + cargoVersion) {
+              console.error("版本号与标签不一致:", { tag, cargoVersion, tauriVersion });
+              process.exit(1);
+            }
+            console.log("版本校验通过:", tag);
+          '
+      - name: 安装 Linux 打包依赖
+        if: runner.os == 'Linux'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends \
+            libwebkit2gtk-4.1-dev \
+            libgtk-3-dev \
+            libayatana-appindicator3-dev \
+            librsvg2-dev \
+            patchelf \
+            xdg-utils \
+            libfuse2t64 \
+            pkg-config
+      - name: 准备 Rust
+        run: rustup toolchain install stable --profile minimal
+      - name: 缓存 Rust 构建产物
+        uses: Swatinem/rust-cache@v2
+      - name: 检查界面模块
+        run: node scripts/check-ui.mjs
+      - name: 构建并打包桌面安装包
+        uses: tauri-apps/tauri-action@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          NO_STRIP: ${{ runner.os == 'Linux' && 'true' || '' }}
+        with:
+          projectPath: apps/desktop
+          args: '-- --locked'
+          tagName: ${{ startsWith(github.ref, 'refs/tags/v') && github.ref_name || '' }}
+          releaseName: ${{ startsWith(github.ref, 'refs/tags/v') && 'Tenonry v__VERSION__' || '' }}
+          releaseDraft: true
+          prerelease: false
+          generateReleaseNotes: true
+          uploadUpdaterJson: false
+          uploadUpdaterSignatures: false
+          uploadWorkflowArtifacts: ${{ !startsWith(github.ref, 'refs/tags/v') }}
+          retryAttempts: 2

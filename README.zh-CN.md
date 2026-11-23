@@ -93,6 +93,8 @@ async fn main() -> tenonry::Result<()> {
 
 ## 独立桌面端
 
+Windows（`.msi`、`.exe`）与 Linux（`.deb`、`.rpm`、`.AppImage`）预编译安装包发布在 [GitHub Releases](https://github.com/Nicky0628/tenonry/releases)。
+
 `apps/desktop`（需要 Rust **1.90+**）基于 Tauri 2 与原生 HTML/CSS/ES Modules 构建（无前端打包器与框架依赖），按需启动、单实例运行、关闭主窗口即退出，不常驻托盘或后台守护进程：
 
 - **工具视图**：启动先离线快速探测，随后识别来源与包管理器归属并静默异步检查更新；支持按状态、分类与关键字筛选、单工具详情抽屉、版本选择、单条与跨后端批量计划审阅、实时阶段/日志监控。

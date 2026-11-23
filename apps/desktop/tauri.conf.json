@@ -30,9 +30,19 @@
     }
   },
   "bundle": {
-    "active": false,
-    "shortDescription": "跨平台开发工具环境管理器",
+    "active": true,
+    "targets": "all",
+    "shortDescription": "Cross-platform development tool environment manager",
+    "longDescription": "Tenonry coordinates system and ecosystem package managers (APT, DNF, pacman, WinGet, npm) to discover tools, inspect ownership, preview version-locked plans, and verify task execution.",
+    "publisher": "Nicky",
+    "license": "MIT OR Apache-2.0",
     "category": "DeveloperTool",
-    "icon": ["icons/icon.ico", "icons/icon.png"]
+    "icon": [
+      "icons/32x32.png",
+      "icons/128x128.png",
+      "icons/128x128@2x.png",
+      "icons/icon.png",
+      "icons/icon.ico"
+    ]
   }
 }

@@ -48,8 +48,6 @@ jobs:
           cargo +stable test -p tenonry --doc --locked
       - name: 编译检查
         run: cargo +stable check --workspace --locked
-      - name: 构建工作区
-        run: cargo +stable build --workspace --locked --release
       - name: 检查核心库打包
         if: runner.os == 'Linux'
         run: cargo +stable package -p tenonry --locked

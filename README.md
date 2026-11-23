@@ -93,6 +93,8 @@ Always generate and review an operation plan first, then pass the full plan back
 
 ## Standalone Desktop App
 
+Prebuilt installers for Windows (`.msi`, `.exe`) and Linux (`.deb`, `.rpm`, `.AppImage`) are published on [GitHub Releases](https://github.com/Nicky0628/tenonry/releases).
+
 `apps/desktop` (requires Rust **1.90+**) is built with Tauri 2 and vanilla HTML/CSS/ES Modules (no frontend bundler or framework dependencies). It runs on demand as a single instance and exits cleanly when the main window closes, without a background tray or daemon:
 
 - **Tools view**: Performs an offline fast probe on startup, then resolves backend ownership and checks updates asynchronously; supports status/category/keyword filters, detail drawer, version picker, single & cross-backend batch plan review, and live phase/log monitoring.
