@@ -1,5 +1,5 @@
 use tauri::WebviewWindow;
-use tenon::{Error, Result};
+use tenonry::{Error, Result};
 use url::Url;
 
 pub(crate) fn local_app_url(url: &Url) -> bool {

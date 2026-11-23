@@ -1,10 +1,27 @@
-//! Tenon: cross-platform development tool discovery, multi-backend package
+//! Tenonry: cross-platform development tool discovery, multi-backend package
 //! coordination, and verifiable task execution.
 //!
 //! Callers supply a data directory where task journals (`operations.json`),
 //! per-backend catalog caches (`catalog/`), and the cross-process lock
-//! (`tenon.lock`) are persisted. Constructing [`Tenon`] performs no disk I/O.
+//! (`tenonry.lock`) are persisted. Constructing [`Tenonry`] performs no disk I/O.
 //! Clones share in-memory caches and active task state.
+//!
+//! # Example
+//!
+//! ```no_run
+//! use tenonry::{Result, Tenonry};
+//!
+//! async fn inspect() -> Result<()> {
+//!     let tenonry = Tenonry::new("/absolute/path/to/data-dir")?;
+//!     let report = tenonry.system_report().await?;
+//!     for tool in report.tools {
+//!         println!("{}: {:?} ({:?})", tool.status.name, tool.state, tool.source);
+//!     }
+//!     Ok(())
+//! }
+//! ```
+
+#![warn(missing_docs)]
 
 mod backend;
 mod engine;
@@ -26,17 +43,26 @@ pub use registry::{available_tools, is_known_tool};
 
 use backend::catalog;
 use engine::Engine;
+use std::fmt;
 use std::path::{Path, PathBuf};
 use std::sync::Arc;
 use tokio::sync::Semaphore;
 
-/// Primary service entry point for Tenon.
+/// Primary service entry point for Tenonry.
 #[derive(Clone)]
-pub struct Tenon {
+pub struct Tenonry {
     engine: Engine,
 }
 
-impl Tenon {
+impl fmt::Debug for Tenonry {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.debug_struct("Tenonry")
+            .field("data_directory", &self.engine.data_directory())
+            .finish_non_exhaustive()
+    }
+}
+
+impl Tenonry {
     /// Creates a service bound to `directory` without creating or modifying files.
     /// Relative paths are resolved once against the current working directory.
     pub fn new(directory: impl Into<PathBuf>) -> Result<Self> {
@@ -61,6 +87,7 @@ impl Tenon {
         self
     }
 
+    /// Returns the resolved data directory used for journals, caches, and locks.
     pub fn data_directory(&self) -> &Path {
         self.engine.data_directory()
     }

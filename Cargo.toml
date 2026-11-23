@@ -1,22 +1,24 @@
 [workspace]
-members = ["crates/tenon", "apps/desktop"]
-default-members = ["crates/tenon", "apps/desktop"]
+members = ["crates/tenonry", "apps/desktop"]
+default-members = ["crates/tenonry", "apps/desktop"]
 resolver = "3"
 
 [workspace.package]
 version = "0.1.0"
 edition = "2024"
-publish = false
+rust-version = "1.89"
+license = "MIT OR Apache-2.0"
+repository = "https://github.com/Nicky0628/tenonry"
+homepage = "https://github.com/Nicky0628/tenonry"
 
 [workspace.dependencies]
-tenon = { path = "crates/tenon", version = "=0.1.0" }
-tokio = { version = "1", features = ["full"] }
+tenonry = { path = "crates/tenonry", version = "=0.1.0" }
+tokio = { version = "1", features = ["io-util", "macros", "process", "rt", "sync", "time"] }
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
 jiff = { version = "1", default-features = false, features = ["std"] }
 uuid = { version = "1", features = ["v4"] }
 url = "2.5.9"
-fs2 = "0.4"
 which = "8"
 tempfile = "3"
 rustix = { version = "1", features = ["fs", "process"] }

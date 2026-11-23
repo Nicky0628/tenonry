@@ -1,7 +1,7 @@
 use crate::{navigation::require_main_window, runtime::AppState};
 use serde::Serialize;
 use tauri::{State, Theme, WebviewWindow};
-use tenon::{
+use tenonry::{
     BackendId, BatchPlan, BatchPlanInput, BatchStartInput, CatalogStatus, Error, Operation, Plan,
     PlanInput, ProbeReport, Result, StartInput, SystemReport, ToolChoice, UpdateCheck, VersionList,
     available_tools,
@@ -26,7 +26,7 @@ pub(crate) fn app_info(window: WebviewWindow, state: State<'_, AppState>) -> Res
         version: env!("CARGO_PKG_VERSION"),
         platform: std::env::consts::OS,
         arch: std::env::consts::ARCH,
-        data_directory: state.tenon.data_directory().display().to_string(),
+        data_directory: state.tenonry.data_directory().display().to_string(),
         environment_issue: state.environment_issue.clone(),
         tools: available_tools(),
     })
@@ -54,9 +54,9 @@ pub(crate) async fn probe_report(
 ) -> Result<ProbeReport> {
     require_main_window(&window)?;
     if force {
-        state.tenon.refresh_probe_report().await
+        state.tenonry.refresh_probe_report().await
     } else {
-        state.tenon.probe_report().await
+        state.tenonry.probe_report().await
     }
 }
 
@@ -68,9 +68,9 @@ pub(crate) async fn system_report(
 ) -> Result<SystemReport> {
     require_main_window(&window)?;
     if force {
-        state.tenon.refresh_system_report().await
+        state.tenonry.refresh_system_report().await
     } else {
-        state.tenon.system_report().await
+        state.tenonry.system_report().await
     }
 }
 
@@ -82,7 +82,7 @@ pub(crate) async fn selected_report(
     force: bool,
 ) -> Result<SystemReport> {
     require_main_window(&window)?;
-    state.tenon.selected_report(&ids, force).await
+    state.tenonry.selected_report(&ids, force).await
 }
 
 #[tauri::command]
@@ -93,7 +93,7 @@ pub(crate) async fn refresh_catalog(
     force: bool,
 ) -> Result<CatalogStatus> {
     require_main_window(&window)?;
-    state.tenon.refresh_catalog(backend, force).await
+    state.tenonry.refresh_catalog(backend, force).await
 }
 
 #[tauri::command]
@@ -104,7 +104,7 @@ pub(crate) async fn list_versions(
     backend: Option<BackendId>,
 ) -> Result<VersionList> {
     require_main_window(&window)?;
-    state.tenon.list_versions(tool_id, backend).await
+    state.tenonry.list_versions(tool_id, backend).await
 }
 
 #[tauri::command]
@@ -114,7 +114,7 @@ pub(crate) async fn check_updates(
     tool_ids: Vec<String>,
 ) -> Result<Vec<UpdateCheck>> {
     require_main_window(&window)?;
-    state.tenon.check_updates(tool_ids).await
+    state.tenonry.check_updates(tool_ids).await
 }
 
 #[tauri::command]
@@ -124,7 +124,7 @@ pub(crate) async fn check_update(
     tool_id: String,
 ) -> Result<UpdateCheck> {
     require_main_window(&window)?;
-    state.tenon.check_update(tool_id).await
+    state.tenonry.check_update(tool_id).await
 }
 
 #[tauri::command]
@@ -134,7 +134,7 @@ pub(crate) async fn prepare_plan(
     input: PlanInput,
 ) -> Result<Plan> {
     require_main_window(&window)?;
-    state.tenon.prepare_plan(input).await
+    state.tenonry.prepare_plan(input).await
 }
 
 #[tauri::command]
@@ -144,7 +144,7 @@ pub(crate) async fn prepare_batch(
     input: BatchPlanInput,
 ) -> Result<BatchPlan> {
     require_main_window(&window)?;
-    state.tenon.prepare_batch(input).await
+    state.tenonry.prepare_batch(input).await
 }
 
 #[tauri::command]
@@ -154,7 +154,7 @@ pub(crate) async fn start_request(
     input: StartInput,
 ) -> Result<Operation> {
     require_main_window(&window)?;
-    state.tenon.start_request(input).await
+    state.tenonry.start_request(input).await
 }
 
 #[tauri::command]
@@ -164,7 +164,7 @@ pub(crate) async fn start_batch(
     input: BatchStartInput,
 ) -> Result<Operation> {
     require_main_window(&window)?;
-    state.tenon.start_batch(input).await
+    state.tenonry.start_batch(input).await
 }
 
 #[tauri::command]
@@ -173,8 +173,8 @@ pub(crate) async fn operations(
     state: State<'_, AppState>,
 ) -> Result<Vec<Operation>> {
     require_main_window(&window)?;
-    let tenon = state.tenon.clone();
-    tokio::task::spawn_blocking(move || tenon.operations())
+    let tenonry = state.tenonry.clone();
+    tokio::task::spawn_blocking(move || tenonry.operations())
         .await
         .map_err(|error| Error::internal(format!("无法读取任务记录：{error}")))?
 }
@@ -186,8 +186,8 @@ pub(crate) async fn operation(
     id: String,
 ) -> Result<Operation> {
     require_main_window(&window)?;
-    let tenon = state.tenon.clone();
-    tokio::task::spawn_blocking(move || tenon.operation(&id))
+    let tenonry = state.tenonry.clone();
+    tokio::task::spawn_blocking(move || tenonry.operation(&id))
         .await
         .map_err(|error| Error::internal(format!("无法读取任务状态：{error}")))?
 }
@@ -198,8 +198,8 @@ pub(crate) async fn latest_operation(
     state: State<'_, AppState>,
 ) -> Result<Option<Operation>> {
     require_main_window(&window)?;
-    let tenon = state.tenon.clone();
-    tokio::task::spawn_blocking(move || tenon.latest_operation())
+    let tenonry = state.tenonry.clone();
+    tokio::task::spawn_blocking(move || tenonry.latest_operation())
         .await
         .map_err(|error| Error::internal(format!("无法读取最近任务：{error}")))?
 }
@@ -211,5 +211,5 @@ pub(crate) async fn recheck_operation(
     id: String,
 ) -> Result<Operation> {
     require_main_window(&window)?;
-    state.tenon.recheck_operation(&id).await
+    state.tenonry.recheck_operation(&id).await
 }

@@ -1,6 +1,5 @@
 use crate::error::{Error, Result};
-use fs2::FileExt;
-use std::fs::{File, OpenOptions};
+use std::fs::{File, OpenOptions, TryLockError};
 use std::io::ErrorKind as IoErrorKind;
 use std::path::Path;
 
@@ -27,10 +26,12 @@ impl FileLock {
             .truncate(false)
             .open(path)
             .map_err(|error| Error::persistence(format!("无法打开锁文件：{error}")))?;
-        match FileExt::try_lock_exclusive(&file) {
+        match file.try_lock() {
             Ok(()) => Ok(Self(file)),
-            Err(error) if is_contended(&error) => Err(Error::busy(busy_message)),
-            Err(error) => Err(Error::persistence(format!("无法获取锁：{error}"))),
+            Err(TryLockError::WouldBlock) => Err(Error::busy(busy_message)),
+            Err(TryLockError::Error(error)) => {
+                Err(Error::persistence(format!("无法获取锁：{error}")))
+            }
         }
     }
 
@@ -40,10 +41,12 @@ impl FileLock {
             Err(error) if error.kind() == IoErrorKind::NotFound => return Ok(SharedLock::Missing),
             Err(error) => return Err(Error::persistence(format!("无法读取锁文件：{error}"))),
         };
-        match FileExt::try_lock_shared(&file) {
+        match file.try_lock_shared() {
             Ok(()) => Ok(SharedLock::Acquired(Self(file))),
-            Err(error) if is_contended(&error) => Ok(SharedLock::Contended),
-            Err(error) => Err(Error::persistence(format!("无法读取共享锁：{error}"))),
+            Err(TryLockError::WouldBlock) => Ok(SharedLock::Contended),
+            Err(TryLockError::Error(error)) => {
+                Err(Error::persistence(format!("无法读取共享锁：{error}")))
+            }
         }
     }
 
@@ -53,24 +56,22 @@ impl FileLock {
             Err(error) if error.kind() == IoErrorKind::NotFound => return Ok(false),
             Err(error) => return Err(Error::persistence(format!("无法读取锁文件：{error}"))),
         };
-        match FileExt::try_lock_exclusive(&file) {
+        match file.try_lock() {
             Ok(()) => {
-                FileExt::unlock(&file).map_err(|error| Error::persistence(error.to_string()))?;
+                file.unlock()
+                    .map_err(|error| Error::persistence(error.to_string()))?;
                 Ok(false)
             }
-            Err(error) if is_contended(&error) => Ok(true),
-            Err(error) => Err(Error::persistence(format!("无法确认操作锁状态：{error}"))),
+            Err(TryLockError::WouldBlock) => Ok(true),
+            Err(TryLockError::Error(error)) => {
+                Err(Error::persistence(format!("无法确认操作锁状态：{error}")))
+            }
         }
     }
 }
 
 impl Drop for FileLock {
     fn drop(&mut self) {
-        let _ = FileExt::unlock(&self.0);
+        let _ = self.0.unlock();
     }
-}
-
-fn is_contended(error: &std::io::Error) -> bool {
-    error.kind() == IoErrorKind::WouldBlock
-        || error.raw_os_error() == fs2::lock_contended_error().raw_os_error()
 }

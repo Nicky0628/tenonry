@@ -1,13 +1,17 @@
 [package]
-name = "tenon-desktop"
+name = "tenonry-desktop"
 version.workspace = true
 edition.workspace = true
-publish.workspace = true
-description = "Tenon standalone desktop environment manager"
-default-run = "tenon"
+rust-version = "1.90"
+license.workspace = true
+repository.workspace = true
+homepage.workspace = true
+publish = false
+description = "Tenonry standalone desktop environment manager"
+default-run = "tenonry"
 
 [[bin]]
-name = "tenon"
+name = "tenonry"
 path = "src/main.rs"
 
 [features]
@@ -15,7 +19,7 @@ default = ["custom-protocol"]
 custom-protocol = ["tauri/custom-protocol"]
 
 [dependencies]
-tenon.workspace = true
+tenonry.workspace = true
 serde.workspace = true
 tokio.workspace = true
 url.workspace = true

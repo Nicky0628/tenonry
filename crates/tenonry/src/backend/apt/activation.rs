@@ -33,10 +33,10 @@ pub(super) fn install_commands(tool_id: &str, package: &str) -> Result<Vec<Comma
     let mut commands = Vec::new();
     for (program, target) in entries {
         let link = format!("/usr/local/bin/{program}");
-        let group = format!("tenon-{program}");
+        let group = format!("tenonry-{program}");
         let expected_alt = format!("/etc/alternatives/{group}");
         // Never overwrite a manually installed executable; only retarget alternatives
-        // managed by Tenon.
+        // managed by Tenonry.
         if Path::new(&link).symlink_metadata().is_ok()
             && std::fs::read_link(&link).ok().as_deref() != Some(Path::new(&expected_alt))
         {
@@ -79,7 +79,7 @@ pub(super) fn cleanup_commands(tool: &ToolReport) -> Vec<Command> {
     programs
         .iter()
         .filter_map(|program| {
-            let group = format!("tenon-{program}");
+            let group = format!("tenonry-{program}");
             let link = format!("/usr/local/bin/{program}");
             (std::fs::read_link(&link).ok().as_deref()
                 == Some(Path::new(&format!("/etc/alternatives/{group}"))))

@@ -15,7 +15,7 @@ use std::sync::{Arc, Mutex as StdMutex};
 use std::time::Instant;
 use tokio::sync::{Mutex, OwnedSemaphorePermit, Semaphore, SemaphorePermit};
 
-/// Internal shared service state behind the public `Tenon` facade.
+/// Internal shared service state behind the public `Tenonry` facade.
 #[derive(Clone)]
 pub(crate) struct Engine {
     pub(crate) data_dir: PathBuf,
@@ -44,7 +44,7 @@ impl Engine {
     }
 
     pub(crate) fn lock_path(&self) -> PathBuf {
-        self.data_dir.join("tenon.lock")
+        self.data_dir.join("tenonry.lock")
     }
 
     pub(crate) fn data_directory(&self) -> &Path {

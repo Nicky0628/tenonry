@@ -1,21 +1,21 @@
 # 贡献指南
 
-开始修改前请先阅读 [README.md](README.md)，了解项目定位、工作区布局与验证命令。
+开始修改前请先阅读 [README.md](README.md) 或 [README.zh-CN.md](README.zh-CN.md)，了解项目定位、工作区布局、最低 Rust 版本（核心库 1.89+、桌面端 1.90+）与验证命令。
 
 ## 五层单向架构
 
-`crates/tenon/src` 严格遵守 `model → infra → registry → backend → engine → lib` 的单向依赖：
+`crates/tenonry/src` 严格遵守 `model → infra → registry → backend → engine → lib` 的单向依赖：
 
 - **`error.rs` / `model/`**：结构化错误与纯强类型领域模型，不含 IO 或包管理器逻辑。
 - **`infra/`**：进程执行、路径探测、跨进程锁、提权封装与原子存储，不感知具体包管理器。
 - **`registry/`**：工具目录与跨工具通用规则，与任何包管理器命名解耦。
 - **`backend/`**：统一 `BackendDriver` 契约与 `Backend` 静态分发。每个包管理器在 `backend/<name>/` 下纵向自包含（探测、映射、受保护规则、源刷新、预检、锁版本命令生成、进度解析与繁忙检测）。
 - **`engine/`**：编排层（探测、按后端分组并行更新、版本路由、单条/批量计划、流式执行器、结果核验与任务日志）。`engine/` 只面向统一 `Backend` 能力位工作，不得硬编码具体包管理器分支。
-- **`lib.rs`**：唯一对外门面 `Tenon` 与公共导出。
+- **`lib.rs`**：唯一对外门面 `Tenonry` 与公共导出。
 
 新增包管理器时：
 1. 在 `model/backend.rs` 为 `BackendId` 新增变体并声明其 `BackendCapabilities`。
-2. 新增 `crates/tenon/src/backend/<name>/` 实现 `BackendDriver` 与该后端的工具映射。
+2. 新增 `crates/tenonry/src/backend/<name>/` 实现 `BackendDriver` 与该后端的工具映射。
 3. 在 `backend/mod.rs` 注册平台候选与静态分发。
 
 ## 安全与错误处理约定
@@ -26,8 +26,10 @@
 
 ## 验证
 
-执行 README 中的格式、Clippy、编译检查与发布构建。使用终端内联命令进行只读验证，不新增测试文件、测试目录、夹具、持久化测试脚本或源码测试模块。验证读取功能时不得修改本机已有软件或系统受保护组件；实际安装、更新和卸载必须经明确授权。
+执行 README 中的界面静态检查、格式、Clippy、文档构建（`RUSTDOCFLAGS="-D warnings" cargo doc -p tenonry --no-deps --locked`）、编译检查与发布构建。核心库启用了 `#![warn(missing_docs)]`，所有新增或修改的公开 API 必须附带清晰的 rustdoc 注释。使用终端内联命令进行只读验证，不新增测试文件、测试目录、夹具、持久化测试脚本或源码测试模块。验证读取功能时不得修改本机已有软件或系统受保护组件；实际安装、更新和卸载必须经明确授权。
 
-## 提交
+## 提交与协议
 
 标题采用 `type(scope): 中文摘要`，正文说明解决的问题、最终行为及边界处理，末段以 `验证：` 记录实际执行的检查及未验证范围。`docs/`、`AGENTS.md`、凭据与构建产物不提交。
+
+除另有明确说明外，向本项目提交的任何贡献均默认按 `MIT OR Apache-2.0` 双协议授权。

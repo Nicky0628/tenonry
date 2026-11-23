@@ -1,53 +1,66 @@
-# Tenon
+# Tenonry
 
-跨平台开发工具环境协调库与桌面工具（Cargo Workspace）。建立在现有系统包管理器与生态包管理器之上，提供工具探测、安装来源归属、版本查询、计划预检、多后端批量编排、任务日志与结果复核。
+English | [简体中文](README.zh-CN.md)
 
-## 支持范围
+[![CI](https://github.com/Nicky0628/tenonry/actions/workflows/check.yml/badge.svg)](https://github.com/Nicky0628/tenonry/actions/workflows/check.yml)
+[![Crates.io](https://img.shields.io/crates/v/tenonry.svg)](https://crates.io/crates/tenonry)
+[![Documentation](https://docs.rs/tenonry/badge.svg)](https://docs.rs/tenonry)
+[![License](https://img.shields.io/crates/l/tenonry.svg)](#license)
 
-| 后端 | 作用域 | 平台 | 安装、更新、卸载 | 指定版本 | 事务合并 |
+Cross-platform development tool environment coordination library and standalone desktop manager (Cargo Workspace). Built on top of existing system and ecosystem package managers, Tenonry provides tool probing, installation ownership attribution, version queries, preflight plans, multi-backend batch orchestration, task journals, and post-execution verification.
+
+## Supported Scope
+
+| Backend | Scope | Platform | Install / Update / Uninstall | Version Selection | Batch Transactions |
 | --- | --- | --- | --- | --- | --- |
-| APT | System | Linux | 支持 | 支持 | 支持 |
-| DNF | System | Linux | 支持 | — | 支持 |
-| pacman | System | Linux | 支持 | — | 支持 |
-| WinGet | System | Windows | 支持 | — | 支持 |
-| npm | Ecosystem | Linux、Windows | 支持 | 支持 | — |
+| APT | System | Linux | Yes | Yes | Yes |
+| DNF | System | Linux | Yes | — | Yes |
+| pacman | System | Linux | Yes | — | Yes |
+| WinGet | System | Windows | Yes | — | Yes |
+| npm | Ecosystem | Linux, Windows | Yes | Yes | — |
 
-可用工具与版本由工具注册表、本机可用后端与软件源共同决定；操作严格遵循工具的实际安装来源，系统受保护组件和多来源冲突工具禁止自动修改。
+Available tools and versions are determined by the built-in tool registry, locally available backends, and configured package sources. Operations strictly respect each tool's actual installation source; system-protected components, mixed-source installs, and multi-backend conflicts are blocked from automatic modification.
 
-## 工作区结构
+> **Platform note**: Core library compilation is verified on Linux, Windows, and macOS. Native package backends currently target Linux (`APT`, `DNF`, `pacman`, `npm`) and Windows (`WinGet`, `npm`).
+
+## Workspace Layout
 
 ```text
-tenon/
-├── Cargo.toml                  # Workspace 根配置
+tenonry/
+├── Cargo.toml                  # Workspace root manifest
 ├── crates/
-│   └── tenon/                  # 核心 Rust 库（零 UI 依赖）
+│   └── tenonry/                # Core Rust library (zero UI dependencies, published on crates.io)
 │       └── src/
-│           ├── lib.rs          # 对外门面 Tenon 与公开导出
-│           ├── error.rs        # 结构化错误 Error / ErrorKind
-│           ├── model/          # 强类型领域模型与序列化 DTO
-│           ├── infra/          # 进程、路径、探测、锁、提权、原子读写
-│           ├── registry/       # 与包管理器无关的工具目录与通用规则
-│           ├── backend/        # BackendDriver 契约与各后端纵向实现
-│           └── engine/         # 探测、更新、版本、计划、执行、核验与任务日志
+│           ├── lib.rs          # Public Tenonry facade and re-exports
+│           ├── error.rs        # Structured Error / ErrorKind
+│           ├── model/          # Strongly typed domain models & serde DTOs
+│           ├── infra/          # Processes, paths, probing, file locks, elevation, atomic storage
+│           ├── registry/       # Backend-agnostic tool catalog and shared rules
+│           ├── backend/        # BackendDriver contract & vertical per-backend implementations
+│           └── engine/         # Probing, updates, versions, planning, execution, verification, journals
 ├── apps/
-│   └── desktop/                # 独立 Tauri 2 桌面应用（原生 HTML/CSS/ES Modules）
-│       ├── src/                # 单实例、来源校验、IPC 适配与任务关闭保护
-│       └── ui/                 # 工具、后端与软件源、任务记录及操作弹窗界面
+│   └── desktop/                # Standalone Tauri 2 desktop app (vanilla HTML/CSS/ES Modules)
+│       ├── src/                # Single-instance guard, origin checks, IPC adapter, close guard
+│       └── ui/                 # Tools, backends & sources, task history, and plan/monitor dialogs
 └── scripts/
-    └── check-ui.mjs            # 界面 ES 模块语法与静态资源引用检查
+    └── check-ui.mjs            # ES module syntax and static asset reference checker
 ```
 
-## 使用
+## Using the `tenonry` Crate
 
-需要支持 Rust 2024 edition 的稳定工具链。执行包管理操作时，本机需已安装对应的包管理器。
+Requires Rust **1.89+** (Edition 2024). Executing package operations requires the corresponding host package manager to be installed.
+
+```sh
+cargo add tenonry
+```
 
 ```rust
-use tenon::Tenon;
+use tenonry::Tenonry;
 
 #[tokio::main]
-async fn main() -> tenon::Result<()> {
-    let tenon = Tenon::new("/absolute/path/to/data-dir")?;
-    let report = tenon.system_report().await?;
+async fn main() -> tenonry::Result<()> {
+    let tenonry = Tenonry::new("/absolute/path/to/data-dir")?;
+    let report = tenonry.system_report().await?;
     for tool in report.tools {
         println!("{}: {:?} ({:?})", tool.status.name, tool.state, tool.source);
     }
@@ -55,46 +68,60 @@ async fn main() -> tenon::Result<()> {
 }
 ```
 
-主要入口（`Tenon`）：
+Primary entry points on `Tenonry`:
 
-| 功能 | API |
+| Capability | API |
 | --- | --- |
-| 工具目录 | `available_tools`、`is_known_tool` |
-| 轻量探测与完整报告 | `probe_report`、`refresh_probe_report`、`system_report`、`selected_report`、`refresh_system_report` |
-| 软件源、版本与更新 | `refresh_catalog`、`list_versions`、`check_updates`、`check_update` |
-| 操作计划 | `prepare_plan`、`prepare_batch` |
-| 启动与执行任务 | `apply_plan`、`start_plan`、`start_request`、`start_batch` |
-| 任务记录与复核 | `operations`、`operation`、`latest_operation`、`recheck_operation` |
+| Tool catalog | `available_tools`, `is_known_tool` |
+| Lightweight probe & full inventory | `probe_report`, `refresh_probe_report`, `system_report`, `selected_report`, `refresh_system_report` |
+| Catalogs, versions & updates | `refresh_catalog`, `list_versions`, `check_updates`, `check_update` |
+| Preflight planning | `prepare_plan`, `prepare_batch` |
+| Execution & async tasks | `apply_plan`, `start_plan`, `start_request`, `start_batch` |
+| Task history & re-verification | `operations`, `operation`, `latest_operation`, `recheck_operation` |
 
-先生成并审阅操作计划，再将完整计划传回执行接口。执行前重新核对工具与版本状态：若在启动命令前校验失败（如计划过期），`apply_plan` 直接返回对应 `Error`（例如 `ErrorKind::PlanExpired`），异步接口（`start_*`）在任务记录的 `outcome.error` 中保留完整结构化 `Error`。
+Always generate and review an operation plan first, then pass the full plan back to an execution method. Live tool and version state is re-checked before running commands: if validation fails prior to launching commands (for example, `ErrorKind::PlanExpired`), `apply_plan` returns the structured `Error` directly while async methods (`start_*`) preserve it in `outcome.error`.
 
-混合来源（同一工具同时存在包管理器安装与外部可执行文件）、多后端冲突工具及系统受保护组件均禁止自动更新和卸载。
+`Tenonry::new` accepts a caller-supplied data directory and performs no disk I/O during construction. Task journals, per-backend catalog caches, and the cross-process advisory lock live under `<data-dir>/operations.json`, `<data-dir>/catalog/<backend>/`, and `<data-dir>/tenonry.lock`. Clones share in-memory caches and active task state, and `with_operation_limits` allows injecting shared Tokio semaphores to coordinate concurrency.
 
-`Tenon::new` 接收调用方指定的数据目录，构造时不触发磁盘 I/O。任务记录、各后端软件源缓存与跨进程锁分别位于数据目录下的 `operations.json`、`catalog/<backend>/` 和 `tenon.lock`。克隆实例共享缓存与任务状态；可通过 `with_operation_limits` 注入共享 Tokio 信号量协调并发。
+> **Note on user-facing messages**: Structured categories (`ErrorKind`, `ToolState`, `ToolSource`, etc.) are language-neutral enums, while default human-readable status and error strings are currently authored in Simplified Chinese.
 
-## 独立桌面端
+## Standalone Desktop App
 
-`apps/desktop` 基于 Tauri 2 与原生 HTML/CSS/ES Modules 构建（无前端打包器与框架依赖），按需启动、单实例运行、关闭主窗口即退出，不常驻托盘或后台守护进程：
+`apps/desktop` (requires Rust **1.90+**) is built with Tauri 2 and vanilla HTML/CSS/ES Modules (no frontend bundler or framework dependencies). It runs on demand as a single instance and exits cleanly when the main window closes, without a background tray or daemon:
 
-- **工具视图**：启动先离线快速探测，随后识别来源与包管理器归属并静默异步检查更新；支持按状态、分类与关键字筛选、单工具详情抽屉、版本选择、单条与跨后端批量计划审阅、实时阶段/日志监控。
-- **后端与软件源视图**：展示各平台包管理器可用状态、能力矩阵、托管工具与手动刷新软件源，以及本地数据目录与运行诊断信息。
-- **任务记录视图**：持久查看最近操作记录，分开呈现命令执行结果、系统核验结果与结构化错误类别，支持中断/异常任务的只读状态复核。
-- **外观与保护**：默认跟随系统浅色/深色主题并支持手动切换；任务执行期间阻止误关主窗口并提示当前进度。
+- **Tools view**: Performs an offline fast probe on startup, then resolves backend ownership and checks updates asynchronously; supports status/category/keyword filters, detail drawer, version picker, single & cross-backend batch plan review, and live phase/log monitoring.
+- **Backends & sources view**: Displays backend availability, capability matrix, managed tools, manual catalog refresh, local data directory, and runtime diagnostics.
+- **Task history view**: Persists recent operations with separate command execution status, live verification status, and structured error kinds, plus read-only re-verification for interrupted tasks.
+- **Appearance & safeguards**: Follows system light/dark theme by default with manual override, and prevents accidental window closure while a task is actively running.
 
-## 构建与检查
+## Building & Checking
 
 ```sh
 node scripts/check-ui.mjs
 cargo fmt --all --check
 cargo clippy --workspace --locked --all-targets -- -D warnings
+RUSTDOCFLAGS="-D warnings" cargo doc -p tenonry --no-deps --locked
 cargo check --workspace --locked
 cargo build --workspace --locked --release
 ```
 
-直接启动桌面应用：
+Run the desktop app directly:
 
 ```sh
-cargo run -p tenon-desktop --release
+cargo run -p tenonry-desktop --release
 ```
 
-贡献与架构约定见 [CONTRIBUTING.md](CONTRIBUTING.md)。
+## Contributing, Security & Changelog
+
+- Contribution & architecture guidelines: [CONTRIBUTING.md](CONTRIBUTING.md)
+- Security policy & vulnerability reporting: [SECURITY.md](SECURITY.md)
+- Release history: [CHANGELOG.md](CHANGELOG.md)
+
+## License
+
+Dual-licensed under either of:
+
+- Apache License, Version 2.0 ([LICENSE-APACHE](LICENSE-APACHE))
+- MIT license ([LICENSE-MIT](LICENSE-MIT))
+
+at your option. Unless you explicitly state otherwise, any contribution intentionally submitted for inclusion in this work shall be dual-licensed as above, without any additional terms or conditions.

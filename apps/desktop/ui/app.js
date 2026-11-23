@@ -11,7 +11,7 @@ import { renderVersionDialog } from './features/operations/version-dialog.js';
 import { renderPlanDialog } from './features/operations/plan-dialog.js';
 import { renderMonitorDialog } from './features/operations/monitor-dialog.js';
 
-const THEME_STORAGE_KEY = 'tenon.theme';
+const THEME_STORAGE_KEY = 'tenonry.theme';
 
 const DOCK_HINTS = [
   '搜索工具、分类、包名或后端…',
@@ -770,7 +770,7 @@ function renderBanners() {
           { className: 'alert-banner-text' },
           el('strong', { text: '上次任务意外中断：' }),
           el('span', {
-            text: `${actionLabel(op.action)} ${op.name} 尚未确认当前状态。Tenon 不会自动重装，核验完成后才可发起新操作。`,
+            text: `${actionLabel(op.action)} ${op.name} 尚未确认当前状态。Tenonry 不会自动重装，核验完成后才可发起新操作。`,
           })
         ),
         el(
@@ -1011,7 +1011,7 @@ async function bootstrap() {
   }
   applyTheme(savedTheme, false, true);
 
-  await listenEvent('tenon://close-blocked', (operationId) => {
+  await listenEvent('tenonry://close-blocked', (operationId) => {
     showToast('有环境任务正在执行，完成后再关闭窗口。', 'warn');
     if (operationId) {
       handlers.openMonitor(operationId);

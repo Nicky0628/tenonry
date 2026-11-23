@@ -84,7 +84,7 @@ async fn run_steps(
     completed: &Arc<AtomicUsize>,
 ) -> Result<String> {
     let mut log = String::new();
-    let marker = format!("TENON_STEP_{}_", uuid::Uuid::new_v4().simple());
+    let marker = format!("TENONRY_STEP_{}_", uuid::Uuid::new_v4().simple());
     let mut offset = 0;
     let total = steps.len();
 

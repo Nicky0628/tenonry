@@ -1,9 +1,9 @@
 use crate::{commands, navigation::local_app_url};
 use tauri::{Emitter, Manager, WebviewWindowBuilder};
-use tenon::{OperationState, Tenon};
+use tenonry::{OperationState, Tenonry};
 
 pub(crate) struct AppState {
-    pub(crate) tenon: Tenon,
+    pub(crate) tenonry: Tenonry,
     pub(crate) environment_issue: Option<String>,
 }
 
@@ -40,9 +40,9 @@ pub(crate) fn run(environment_issue: Option<String>) {
                 .path()
                 .app_local_data_dir()
                 .map_err(|error| std::io::Error::other(format!("无法确定数据目录：{error}")))?;
-            let tenon = Tenon::new(data_dir).map_err(std::io::Error::other)?;
+            let tenonry = Tenonry::new(data_dir).map_err(std::io::Error::other)?;
             app.manage(AppState {
-                tenon,
+                tenonry,
                 environment_issue,
             });
             let config = app
@@ -60,18 +60,18 @@ pub(crate) fn run(environment_issue: Option<String>) {
         })
         .on_window_event(|window, event| {
             if let tauri::WindowEvent::CloseRequested { api, .. } = event
-                && let Ok(Some(operation)) = window.state::<AppState>().tenon.latest_operation()
+                && let Ok(Some(operation)) = window.state::<AppState>().tenonry.latest_operation()
                 && operation.state == OperationState::Running
             {
                 api.prevent_close();
-                let _ = window.emit("tenon://close-blocked", operation.id);
+                let _ = window.emit("tenonry://close-blocked", operation.id);
             }
         })
         // Tauri exits cleanly when the last window closes; no tray or daemon.
         .run(tauri::generate_context!());
 
     if let Err(error) = result {
-        show_startup_error(&format!("Tenon 无法启动：{error}"));
+        show_startup_error(&format!("Tenonry 无法启动：{error}"));
         std::process::exit(1);
     }
 }
@@ -90,7 +90,7 @@ fn show_startup_error(message: &str) {
             ) -> i32;
         }
         let text: Vec<u16> = message.encode_utf16().chain(std::iter::once(0)).collect();
-        let caption: Vec<u16> = "Tenon".encode_utf16().chain(std::iter::once(0)).collect();
+        let caption: Vec<u16> = "Tenonry".encode_utf16().chain(std::iter::once(0)).collect();
         // SAFETY: Both UTF-16 buffers are NUL-terminated and live across the synchronous call.
         unsafe {
             MessageBoxW(std::ptr::null_mut(), text.as_ptr(), caption.as_ptr(), 0x10);

@@ -33,7 +33,7 @@ async fn capture() -> Result<std::ffi::OsString, String> {
     command
         .args([
             "-ilc",
-            "command printf '\\000TENON_PATH\\000'; /usr/bin/printenv PATH; command printf '\\000TENON_END\\000'",
+            "command printf '\\000TENONRY_PATH\\000'; /usr/bin/printenv PATH; command printf '\\000TENONRY_END\\000'",
         ])
         .env("DISABLE_AUTO_UPDATE", "true")
         .env("HISTFILE", "/dev/null")
@@ -92,8 +92,8 @@ async fn capture() -> Result<std::ffi::OsString, String> {
 fn parse_path(bytes: &[u8]) -> Result<std::ffi::OsString, String> {
     use std::os::unix::ffi::OsStringExt;
 
-    const START: &[u8] = b"\0TENON_PATH\0";
-    const END: &[u8] = b"\0TENON_END\0";
+    const START: &[u8] = b"\0TENONRY_PATH\0";
+    const END: &[u8] = b"\0TENONRY_END\0";
     let start = bytes
         .windows(START.len())
         .position(|part| part == START)

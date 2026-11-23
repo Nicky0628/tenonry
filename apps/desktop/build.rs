@@ -22,5 +22,5 @@ fn main() {
             "latest_operation",
             "recheck_operation",
         ]));
-    tauri_build::try_build(attributes).expect("failed to prepare the Tenon desktop application");
+    tauri_build::try_build(attributes).expect("failed to prepare the Tenonry desktop application");
 }

@@ -84,7 +84,7 @@ export function renderBackendsView(container, state, handlers) {
         }),
         el('p', {
           className: 'empty-state-desc',
-          text: 'Tenon 依托系统及生态包管理器工作，不绕过系统包数据库。',
+          text: 'Tenonry 依托系统及生态包管理器工作，不绕过系统包数据库。',
         })
       )
     );
@@ -217,7 +217,7 @@ export function renderBackendsView(container, state, handlers) {
       'dl',
       { className: 'kv-list' },
       el('dt', { text: '版本' }),
-      el('dd', { className: 'mono', text: info ? `Tenon ${info.version}` : '—' }),
+      el('dd', { className: 'mono', text: info ? `Tenonry ${info.version}` : '—' }),
       el('dt', { text: '平台' }),
       el('dd', { text: info ? platformLabel(info.platform, info.arch) : '—' }),
       el('dt', { text: '数据目录' }),

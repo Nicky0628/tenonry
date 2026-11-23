@@ -264,7 +264,7 @@ const ERROR_PATTERNS = [
 ];
 
 /**
- * Turns a Tenon structured Error or raw backend message into a calm, concise
+ * Turns a Tenonry structured Error or raw backend message into a calm, concise
  * user-facing summary, optional next-step hint, and optional collapsible raw detail.
  */
 export function formatErrorSummary(errorOrMessage) {

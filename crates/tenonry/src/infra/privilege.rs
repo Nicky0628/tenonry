@@ -60,7 +60,7 @@ pub(crate) fn pkexec_batch_arguments(
             offset + index + 1
         ));
     }
-    let mut arguments = vec!["/bin/sh".into(), "-c".into(), script, "tenon".into()];
+    let mut arguments = vec!["/bin/sh".into(), "-c".into(), script, "tenonry".into()];
     arguments.extend(parameters);
     arguments
 }

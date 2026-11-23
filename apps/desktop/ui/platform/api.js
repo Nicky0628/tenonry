@@ -1,7 +1,7 @@
 function tauriCore() {
   const core = window.__TAURI__?.core;
   if (!core?.invoke) {
-    throw normalizeError({ kind: 'internal', message: '未检测到 Tenon 桌面运行环境。' });
+    throw normalizeError({ kind: 'internal', message: '未检测到 Tenonry 桌面运行环境。' });
   }
   return core;
 }

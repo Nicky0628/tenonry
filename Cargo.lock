@@ -1085,16 +1085,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "fs2"
-version = "0.4.3"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "9564fc758e15025b46aa6643b1b77d047d1a56a1aea6e01002ac0c7026876213"
-dependencies = [
- "libc",
- "winapi",
-]
-
-[[package]]
 name = "futures-channel"
 version = "0.3.34"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -3837,10 +3827,9 @@ dependencies = [
 ]
 
 [[package]]
-name = "tenon"
+name = "tenonry"
 version = "0.1.0"
 dependencies = [
- "fs2",
  "jiff 1.0.1",
  "rustix",
  "serde",
@@ -3853,7 +3842,7 @@ dependencies = [
 ]
 
 [[package]]
-name = "tenon-desktop"
+name = "tenonry-desktop"
 version = "0.1.0"
 dependencies = [
  "rustix",
@@ -3861,7 +3850,7 @@ dependencies = [
  "tauri",
  "tauri-build",
  "tauri-plugin-single-instance",
- "tenon",
+ "tenonry",
  "tokio",
  "url",
 ]
@@ -3961,7 +3950,6 @@ dependencies = [
  "bytes",
  "libc",
  "mio",
- "parking_lot",
  "pin-project-lite",
  "signal-hook-registry",
  "socket2",
