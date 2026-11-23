@@ -1,3 +1,4 @@
+use super::mapping;
 use crate::error::{Error, Result};
 use crate::infra::{paths, process};
 use crate::model::Package;
@@ -345,136 +346,44 @@ fn extract_major_minor(text: &str) -> Option<String> {
 impl InstalledApplication {
     fn tool(&self) -> Option<&'static str> {
         let name = self.display_name.trim().to_ascii_lowercase();
-        if name == "git lfs" || name_matches_exact_or_versioned(&name, "git lfs") {
-            Some("git-lfs")
-        } else if name == "git"
-            || name.starts_with("git version ")
-            || name_matches_exact_or_versioned(&name, "git")
-        {
-            Some("git")
-        } else if name.starts_with("github cli") {
-            Some("gh")
-        } else if name == "glab"
-            || name.starts_with("gitlab cli")
-            || name_matches_exact_or_versioned(&name, "glab")
-        {
-            Some("glab")
-        } else if name_matches_exact_or_versioned(&name, "lazygit") {
-            Some("lazygit")
-        } else if name == "git-delta"
-            || name_matches_exact_or_versioned(&name, "git-delta")
-            || name_matches_exact_or_versioned(&name, "delta")
-        {
-            Some("delta")
-        } else if name == "pnpm" || name.starts_with("pnpm ") {
-            Some("pnpm")
-        } else if name_matches_exact_or_versioned(&name, "yarn") {
-            Some("yarn")
-        } else if name_matches_exact_or_versioned(&name, "uv") {
-            Some("uv")
-        } else if name == "composer"
-            || name.starts_with("composer -")
-            || name_matches_exact_or_versioned(&name, "composer")
-        {
-            Some("composer")
-        } else if name == "node.js" || name.starts_with("node.js ") {
-            Some("node")
-        } else if name.starts_with("python ") && !name.contains("launcher") {
-            Some("python")
-        } else if name.starts_with("rust ") || name.starts_with("rustup") {
-            Some("rust")
-        } else if name == "go" || name.starts_with("go programming language") {
-            Some("go")
-        } else if name.contains("temurin") {
-            Some("java")
-        } else if name.starts_with(".net sdk") || name.starts_with("microsoft .net sdk") {
-            Some("dotnet")
-        } else if name_matches_exact_or_versioned(&name, "ruby")
-            && self.major_minor_version().is_some()
-        {
-            Some("ruby")
-        } else if name_matches_exact_or_versioned(&name, "php")
-            && self.major_minor_version().is_some()
-        {
-            Some("php")
-        } else if name_matches_exact_or_versioned(&name, "zig") {
-            Some("zig")
-        } else if name_matches_exact_or_versioned(&name, "bun") {
-            Some("bun")
-        } else if name_matches_exact_or_versioned(&name, "deno") {
-            Some("deno")
-        } else if name == "cmake" || name.starts_with("cmake ") {
-            Some("cmake")
-        } else if name == "llvm" || name_matches_exact_or_versioned(&name, "llvm") {
-            Some("clang")
-        } else if name == "gnu make"
-            || name.starts_with("gnu make ")
-            || name.starts_with("gnuwin32: make")
-            || name_matches_exact_or_versioned(&name, "make")
-        {
-            Some("make")
-        } else if name_matches_exact_or_versioned(&name, "ninja") {
-            Some("ninja")
-        } else if name == "meson"
-            || name.starts_with("meson build")
-            || name_matches_exact_or_versioned(&name, "meson")
-        {
-            Some("meson")
-        } else if name_matches_exact_or_versioned(&name, "just") {
-            Some("just")
-        } else if name == "protobuf"
-            || name.starts_with("protocol buffers")
-            || name_matches_exact_or_versioned(&name, "protobuf")
-        {
-            Some("protoc")
-        } else if name == "docker desktop"
-            || name == "docker cli"
-            || name_matches_exact_or_versioned(&name, "docker cli")
-        {
-            Some("docker")
-        } else if !name.contains("desktop") && name_matches_exact_or_versioned(&name, "podman") {
-            Some("podman")
-        } else if name_matches_exact_or_versioned(&name, "kubectl")
-            || name_matches_exact_or_versioned(&name, "kubernetes cli")
-        {
-            Some("kubectl")
-        } else if name_matches_exact_or_versioned(&name, "helm") {
-            Some("helm")
-        } else if name_matches_exact_or_versioned(&name, "terraform") {
-            Some("terraform")
-        } else if name == "sqlite"
-            || name == "sqlite3"
-            || name_matches_exact_or_versioned(&name, "sqlite")
-            || name_matches_exact_or_versioned(&name, "sqlite3")
-        {
-            Some("sqlite")
-        } else if name_matches_exact_or_versioned(&name, "neovim") {
-            Some("neovim")
-        } else if name_matches_exact_or_versioned(&name, "vim") {
-            Some("vim")
-        } else if name == "ripgrep" || name.starts_with("ripgrep ") {
-            Some("ripgrep")
-        } else if name_matches_exact_or_versioned(&name, "fd") {
-            Some("fd")
-        } else if name_matches_exact_or_versioned(&name, "bat") {
-            Some("bat")
-        } else if name_matches_exact_or_versioned(&name, "jq") {
-            Some("jq")
-        } else if name_matches_exact_or_versioned(&name, "fzf") {
-            Some("fzf")
-        } else if name_matches_exact_or_versioned(&name, "shellcheck") {
-            Some("shellcheck")
-        } else if name_matches_exact_or_versioned(&name, "shfmt") {
-            Some("shfmt")
-        } else if name_matches_exact_or_versioned(&name, "starship") {
-            Some("starship")
-        } else if name_matches_exact_or_versioned(&name, "zoxide") {
-            Some("zoxide")
-        } else if name_matches_exact_or_versioned(&name, "eza") {
-            Some("eza")
-        } else {
-            None
+        if name == "node.js" || name.starts_with("node.js ") {
+            return Some("node");
         }
+        if name.starts_with("python ") && !name.contains("launcher") {
+            return Some("python");
+        }
+        if name.starts_with("rust ") || name.starts_with("rustup") {
+            return Some("rust");
+        }
+        if name.contains("temurin") {
+            return Some("java");
+        }
+        if name.starts_with(".net sdk") || name.starts_with("microsoft .net sdk") {
+            return Some("dotnet");
+        }
+        if name_matches_exact_or_versioned(&name, "ruby") && self.major_minor_version().is_some() {
+            return Some("ruby");
+        }
+        if name_matches_exact_or_versioned(&name, "php") && self.major_minor_version().is_some() {
+            return Some("php");
+        }
+        if name == "docker desktop" {
+            return Some("docker");
+        }
+        if name.contains("desktop") && name.starts_with("podman") {
+            return None;
+        }
+        mapping::FIXED_APPS.iter().find_map(|app| {
+            let matched = app
+                .exact_names
+                .iter()
+                .any(|base| name_matches_exact_or_versioned(&name, base))
+                || app
+                    .prefix_names
+                    .iter()
+                    .any(|prefix| name.starts_with(prefix));
+            matched.then_some(app.tool_id)
+        })
     }
 
     fn major_minor_version(&self) -> Option<String> {
@@ -514,65 +423,25 @@ impl InstalledApplication {
 
     pub(super) fn package(&self) -> Option<Package> {
         let lower = self.display_name.to_ascii_lowercase();
-        let name = match self.tool()? {
-            "git" => "Git.Git".into(),
-            "git-lfs" => "GitHub.GitLFS".into(),
-            "gh" => "GitHub.cli".into(),
-            "glab" => "GLab.GLab".into(),
-            "lazygit" => "JesseDuffield.lazygit".into(),
-            "delta" => "dandavison.delta".into(),
+        let tool = self.tool()?;
+        let name = match tool {
             "node" => "OpenJS.NodeJS".into(),
-            "pnpm" => "pnpm.pnpm".into(),
-            "yarn" => "YarnPkg.Yarn".into(),
-            "uv" => "astral-sh.uv".into(),
-            "composer" => "Composer.Composer".into(),
             "python" => format!("Python.Python.{}", self.python_minor()?),
             "rust" if lower.contains("rustup") => "Rustlang.Rustup".into(),
             "rust" if lower.contains("gnu") => "Rustlang.Rust.GNU".into(),
             "rust" => "Rustlang.Rust.MSVC".into(),
-            "go" => "GoLang.Go".into(),
             "java" => format!("EclipseAdoptium.Temurin.{}.JDK", self.major_version(4)?),
             "dotnet" => format!("Microsoft.DotNet.SDK.{}", self.major_version(2)?),
-            "ruby" if lower.contains("msys2") || lower.contains("devkit") => {
-                format!(
-                    "RubyInstallerTeam.RubyWithDevKit.{}",
-                    self.major_minor_version()?
-                )
-            }
+            "ruby" if lower.contains("msys2") || lower.contains("devkit") => format!(
+                "RubyInstallerTeam.RubyWithDevKit.{}",
+                self.major_minor_version()?
+            ),
             "ruby" => format!("RubyInstallerTeam.Ruby.{}", self.major_minor_version()?),
             "php" => format!("PHP.PHP.{}", self.major_minor_version()?),
-            "zig" => "zig.zig".into(),
-            "bun" => "Oven-sh.Bun".into(),
-            "deno" => "DenoLand.Deno".into(),
-            "cmake" => "Kitware.CMake".into(),
-            "clang" => "LLVM.LLVM".into(),
             "make" if lower.contains("gnuwin32") => "GnuWin32.Make".into(),
-            "make" => "ezwinports.make".into(),
-            "ninja" => "Ninja-build.Ninja".into(),
-            "meson" => "mesonbuild.meson".into(),
-            "just" => "Casey.Just".into(),
-            "protoc" => "Google.Protobuf".into(),
             "docker" if lower.contains("desktop") => "Docker.DockerDesktop".into(),
-            "docker" => "Docker.DockerCLI".into(),
-            "podman" => "RedHat.Podman".into(),
-            "kubectl" => "Kubernetes.kubectl".into(),
-            "helm" => "Helm.Helm".into(),
-            "terraform" => "Hashicorp.Terraform".into(),
-            "sqlite" => "SQLite.SQLite".into(),
-            "neovim" => "Neovim.Neovim".into(),
-            "vim" => "vim.vim".into(),
             "ripgrep" if lower.contains("gnu") => "BurntSushi.ripgrep.GNU".into(),
-            "ripgrep" => "BurntSushi.ripgrep.MSVC".into(),
-            "fd" => "sharkdp.fd".into(),
-            "bat" => "sharkdp.bat".into(),
-            "jq" => "jqlang.jq".into(),
-            "fzf" => "junegunn.fzf".into(),
-            "shellcheck" => "koalaman.shellcheck".into(),
-            "shfmt" => "mvdan.shfmt".into(),
-            "starship" => "Starship.Starship".into(),
-            "zoxide" => "ajeetdsouza.zoxide".into(),
-            "eza" => "eza-community.eza".into(),
-            _ => return None,
+            _ => mapping::find_fixed(tool)?.package_id.into(),
         };
         Some(Package {
             name,
@@ -616,64 +485,16 @@ impl InstalledApplication {
         let (extra_dirs, direct_files) = inventory.supplementary_locations(self, installed);
         directories.extend(extra_dirs);
 
-        let names: &[&str] = match if bundled { "git-lfs" } else { tool } {
-            "git" => &[
-                "cmd/git.exe",
-                "bin/git.exe",
-                "git.exe",
-                "mingw64/bin/git.exe",
-            ],
-            "git-lfs" => &[
-                "cmd/git-lfs.exe",
-                "bin/git-lfs.exe",
-                "git-lfs.exe",
-                "mingw64/bin/git-lfs.exe",
-            ],
-            "gh" => &["gh.exe", "bin/gh.exe"],
-            "glab" => &["glab.exe", "bin/glab.exe"],
-            "lazygit" => &["lazygit.exe", "bin/lazygit.exe"],
-            "delta" => &["delta.exe", "bin/delta.exe"],
+        let target = if bundled { "git-lfs" } else { tool };
+        let names: &[&str] = match target {
             "node" => &["node.exe"],
-            "pnpm" => &["pnpm.exe", "pnpm.cmd"],
-            "yarn" => &["bin/yarn.cmd", "yarn.cmd", "yarn.exe"],
-            "uv" => &["uv.exe", "bin/uv.exe"],
-            "composer" => &["composer.bat", "composer.cmd", "bin/composer.bat"],
             "python" => &["python.exe", "python3.exe"],
             "rust" => &["bin/cargo.exe", "bin/rustc.exe", "cargo.exe", "rustc.exe"],
-            "go" => &["bin/go.exe", "go.exe"],
             "java" => &["bin/java.exe", "bin/javac.exe", "java.exe", "javac.exe"],
             "dotnet" => &["dotnet.exe"],
             "ruby" => &["bin/ruby.exe", "ruby.exe"],
             "php" => &["php.exe", "bin/php.exe"],
-            "zig" => &["zig.exe", "bin/zig.exe"],
-            "bun" => &["bun.exe", "bin/bun.exe"],
-            "deno" => &["deno.exe", "bin/deno.exe"],
-            "cmake" => &["bin/cmake.exe", "cmake.exe"],
-            "clang" => &["bin/clang.exe", "clang.exe"],
-            "make" => &["bin/make.exe", "make.exe"],
-            "ninja" => &["ninja.exe", "bin/ninja.exe"],
-            "meson" => &["meson.exe", "bin/meson.exe"],
-            "just" => &["just.exe", "bin/just.exe"],
-            "protoc" => &["bin/protoc.exe", "protoc.exe"],
-            "docker" => &["resources/bin/docker.exe", "bin/docker.exe", "docker.exe"],
-            "podman" => &["podman.exe", "bin/podman.exe"],
-            "kubectl" => &["kubectl.exe", "bin/kubectl.exe"],
-            "helm" => &["helm.exe", "bin/helm.exe"],
-            "terraform" => &["terraform.exe", "bin/terraform.exe"],
-            "sqlite" => &["sqlite3.exe", "bin/sqlite3.exe"],
-            "neovim" => &["bin/nvim.exe", "nvim.exe"],
-            "vim" => &["vim.exe", "bin/vim.exe"],
-            "ripgrep" => &["rg.exe", "bin/rg.exe"],
-            "fd" => &["fd.exe", "bin/fd.exe"],
-            "bat" => &["bat.exe", "bin/bat.exe"],
-            "jq" => &["jq.exe", "bin/jq.exe"],
-            "fzf" => &["fzf.exe", "bin/fzf.exe"],
-            "shellcheck" => &["shellcheck.exe", "bin/shellcheck.exe"],
-            "shfmt" => &["shfmt.exe", "bin/shfmt.exe"],
-            "starship" => &["starship.exe", "bin/starship.exe"],
-            "zoxide" => &["zoxide.exe", "bin/zoxide.exe"],
-            "eza" => &["eza.exe", "bin/eza.exe"],
-            _ => &[],
+            _ => mapping::find_fixed(target).map_or(&[], |app| app.exes),
         };
         // Portable WinGet zip packages extract into a versioned child directory
         // under InstallLocation (e.g. `ripgrep-14.1.1-.../rg.exe`).

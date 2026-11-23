@@ -78,14 +78,17 @@ pub(crate) fn unix_family_matches(tool_id: &str, package_name: &str) -> bool {
     let numeric_version =
         |value: &str| !value.is_empty() && value.chars().all(|ch| ch.is_ascii_digit() || ch == '.');
     match tool_id {
-        // Languages & runtimes
+        "pnpm" | "bun" | "deno" | "composer" | "git" | "glab" | "lazygit" | "cmake" | "meson"
+        | "maven" | "gdb" | "just" | "podman" | "helm" | "terraform" | "neovim" | "tmux"
+        | "ripgrep" | "bat" | "jq" | "fzf" | "curl" | "httpie" | "shfmt" | "direnv"
+        | "starship" | "zoxide" | "eza" => name == tool_id,
+
         "python" => {
             let name = name.strip_suffix("-minimal").unwrap_or(name);
             name == "python"
-                || name.strip_prefix("python").is_some_and(|rest| {
-                    let rest = rest.trim_start_matches('@');
-                    numeric_version(rest)
-                })
+                || name
+                    .strip_prefix("python")
+                    .is_some_and(|rest| numeric_version(rest.trim_start_matches('@')))
         }
         "node" => {
             matches!(name, "nodejs" | "node" | "npm")
@@ -98,8 +101,7 @@ pub(crate) fn unix_family_matches(tool_id: &str, package_name: &str) -> bool {
         "typescript" => matches!(name, "typescript" | "node-typescript" | "nodejs-typescript"),
         "rust" => matches!(name, "rust" | "rustc" | "cargo" | "rustup"),
         "go" => {
-            name == "go"
-                || name == "golang"
+            matches!(name, "go" | "golang")
                 || (name.starts_with("golang-") && name.ends_with("-go"))
         }
         "java" => {
@@ -121,63 +123,36 @@ pub(crate) fn unix_family_matches(tool_id: &str, package_name: &str) -> bool {
         }
         "php" => {
             matches!(name, "php" | "php-cli")
-                || name.strip_prefix("php").is_some_and(|rest| {
-                    let rest = rest.strip_suffix("-cli").unwrap_or(rest);
-                    numeric_version(rest)
-                })
+                || name
+                    .strip_prefix("php")
+                    .is_some_and(|rest| numeric_version(rest.strip_suffix("-cli").unwrap_or(rest)))
         }
         "zig" => name == "zig" || name.strip_prefix("zig").is_some_and(numeric_version),
-        "bun" => name == "bun",
-        "deno" => name == "deno",
-
-        // Package managers
-        "pnpm" => name == "pnpm",
         "yarn" => matches!(name, "yarn" | "yarnpkg"),
         "uv" => matches!(name, "uv" | "python-uv" | "python3-uv"),
         "pipx" => matches!(name, "pipx" | "python-pipx" | "python3-pipx"),
         "poetry" => matches!(name, "poetry" | "python-poetry" | "python3-poetry"),
-        "composer" => name == "composer",
-
-        // Version control
-        "git" => name == "git",
         "git-lfs" => matches!(name, "git-lfs" | "gitlfs"),
         "gh" => matches!(name, "gh" | "github-cli"),
-        "glab" => name == "glab",
-        "lazygit" => name == "lazygit",
         "delta" => name == "git-delta",
-
-        // Build & compilers
-        "cmake" => name == "cmake",
         "gcc" => {
             name == "gcc"
                 || name.strip_prefix("gcc-").is_some_and(|rest| {
-                    !rest.is_empty()
-                        && (numeric_version(rest)
-                            || (rest.starts_with(|ch: char| ch.is_ascii_digit())
-                                && rest.ends_with("-linux-gnu")))
+                    numeric_version(rest)
+                        || (rest.starts_with(|ch: char| ch.is_ascii_digit())
+                            && rest.ends_with("-linux-gnu"))
                 })
         }
         "clang" => name == "clang" || name.strip_prefix("clang-").is_some_and(numeric_version),
         "make" => matches!(name, "make" | "make-guile"),
         "ninja" => matches!(name, "ninja" | "ninja-build"),
-        "meson" => name == "meson",
-        "maven" => name == "maven",
-        "gdb" => name == "gdb",
-        "just" => name == "just",
         "protoc" => matches!(name, "protobuf-compiler" | "protobuf"),
-
-        // Containers & cloud native
         "docker" => matches!(
             name,
             "docker.io" | "docker-ce-cli" | "docker-cli" | "docker" | "moby-engine"
         ),
-        "podman" => name == "podman",
         "kubectl" => matches!(name, "kubectl" | "kubernetes-client"),
-        "helm" => name == "helm",
-        "terraform" => name == "terraform",
         "ansible" => matches!(name, "ansible" | "ansible-core"),
-
-        // Database clients
         "sqlite" => matches!(name, "sqlite3" | "sqlite"),
         "psql" => {
             matches!(
@@ -200,18 +175,12 @@ pub(crate) fn unix_family_matches(tool_id: &str, package_name: &str) -> bool {
             ) || name
                 .strip_prefix("mysql-client-")
                 .or_else(|| name.strip_prefix("mariadb-client-"))
-                .is_some_and(|rest| {
-                    let rest = rest.strip_prefix("core-").unwrap_or(rest);
-                    numeric_version(rest)
-                })
+                .is_some_and(|rest| numeric_version(rest.strip_prefix("core-").unwrap_or(rest)))
         }
         "redis-cli" => matches!(
             name,
             "redis-tools" | "redis" | "valkey" | "valkey-compat-redis"
         ),
-
-        // Editors & terminal CLI
-        "neovim" => name == "neovim",
         "vim" => matches!(
             name,
             "vim"
@@ -222,20 +191,8 @@ pub(crate) fn unix_family_matches(tool_id: &str, package_name: &str) -> bool {
                 | "vim-enhanced"
                 | "vim-minimal"
         ),
-        "tmux" => name == "tmux",
-        "ripgrep" => name == "ripgrep",
         "fd" => matches!(name, "fd" | "fd-find"),
-        "bat" => name == "bat",
-        "jq" => name == "jq",
-        "fzf" => name == "fzf",
-        "curl" => name == "curl",
-        "httpie" => name == "httpie",
         "shellcheck" => matches!(name, "shellcheck" | "ShellCheck"),
-        "shfmt" => name == "shfmt",
-        "direnv" => name == "direnv",
-        "starship" => name == "starship",
-        "zoxide" => name == "zoxide",
-        "eza" => name == "eza",
         _ => false,
     }
 }

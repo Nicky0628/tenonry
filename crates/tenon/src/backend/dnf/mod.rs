@@ -260,7 +260,7 @@ impl BackendDriver for DnfBackend {
             return Err(Error::unsupported("此安装方式暂不支持选择版本。"));
         }
         let packages: Vec<String> = match action {
-            Action::Install => process::args(mapping::default_packages(spec.id)),
+            Action::Install => mapping::default_packages(spec.id),
             Action::Update => self.update_packages(spec, &tool.packages),
             Action::Uninstall => tool
                 .packages

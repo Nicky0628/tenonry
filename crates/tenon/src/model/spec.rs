@@ -34,3 +34,49 @@ pub(crate) struct ToolSpec {
     pub(crate) identity: Identity,
     pub(crate) platforms: Platforms,
 }
+
+impl ToolSpec {
+    pub(crate) const fn new(
+        id: &'static str,
+        name: &'static str,
+        category: &'static str,
+        programs: &'static [&'static str],
+    ) -> Self {
+        Self {
+            id,
+            name,
+            category,
+            programs,
+            version_arguments: &["--version"],
+            require_all: false,
+            versioned: false,
+            identity: Identity::Single,
+            platforms: Platforms::All,
+        }
+    }
+
+    pub(crate) const fn version_args(mut self, args: &'static [&'static str]) -> Self {
+        self.version_arguments = args;
+        self
+    }
+
+    pub(crate) const fn require_all(mut self) -> Self {
+        self.require_all = true;
+        self
+    }
+
+    pub(crate) const fn versioned(mut self) -> Self {
+        self.versioned = true;
+        self
+    }
+
+    pub(crate) const fn per_program(mut self) -> Self {
+        self.identity = Identity::PerProgram;
+        self
+    }
+
+    pub(crate) const fn linux_only(mut self) -> Self {
+        self.platforms = Platforms::Linux;
+        self
+    }
+}

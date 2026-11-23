@@ -399,10 +399,10 @@ impl BackendDriver for AptBackend {
                     if let Some(newest) = versions::newest_primary_package(self, spec).await? {
                         vec![newest]
                     } else {
-                        process::args(mapping::default_packages(spec.id))
+                        mapping::default_packages(spec.id)
                     }
                 } else {
-                    process::args(mapping::default_packages(spec.id))
+                    mapping::default_packages(spec.id)
                 }
             }
             Action::Update => self.update_packages(spec, &tool.packages),

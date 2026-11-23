@@ -11,7 +11,7 @@ pub use plan::{
     Action, BatchPlan, BatchPlanInput, Change, Command, Plan, PlanInput, Preview, PreviewState,
     TransactionPlan,
 };
-pub(crate) use spec::{Identity, Platforms, ToolSpec};
+pub(crate) use spec::{Identity, ToolSpec};
 pub use task::{
     BatchStartInput, ExecutionState, ItemOutcome, Operation, OperationPhase, OperationState,
     Outcome, StartInput, VerificationState,
