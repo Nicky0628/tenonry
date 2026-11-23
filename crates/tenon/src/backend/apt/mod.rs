@@ -321,7 +321,11 @@ impl BackendDriver for AptBackend {
             "-o".into(),
             "Acquire::Retries=0".into(),
         ]);
-        process::metadata(&self.path, &args).await?.checked()?;
+        // A complete isolated index may span multiple mirrors and large indexes.
+        // Keep per-connection limits while allowing the complete refresh to finish.
+        process::metadata_with_timeout(&self.path, &args, std::time::Duration::from_secs(120))
+            .await?
+            .checked()?;
         Ok("软件源已刷新。".into())
     }
 

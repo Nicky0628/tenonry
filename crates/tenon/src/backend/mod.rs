@@ -20,7 +20,7 @@ use std::pin::Pin;
 use std::process::ExitStatus;
 use std::sync::Arc;
 use std::time::{Duration, Instant};
-use tokio::sync::Mutex;
+use tokio::sync::{Mutex, OwnedMutexGuard};
 
 pub(crate) type CandidateTargets = BTreeMap<String, Result<Change>>;
 
@@ -31,9 +31,19 @@ const METADATA_MAX_ENTRIES: usize = 128;
 #[derive(Clone, Default)]
 pub(crate) struct MetadataCache {
     entries: Arc<Mutex<BTreeMap<String, (Instant, Value)>>>,
+    requests: Arc<Mutex<BTreeMap<String, Arc<Mutex<()>>>>>,
 }
 
 impl MetadataCache {
+    pub(crate) async fn request(&self, key: &str) -> OwnedMutexGuard<()> {
+        let lock = {
+            let mut requests = self.requests.lock().await;
+            requests.retain(|_, lock| Arc::strong_count(lock) > 1);
+            requests.entry(key.into()).or_default().clone()
+        };
+        lock.lock_owned().await
+    }
+
     pub(crate) async fn get(&self, key: &str) -> Option<Value> {
         let guard = self.entries.lock().await;
         guard
@@ -131,7 +141,7 @@ pub(crate) trait BackendDriver {
     }
 
     fn local_catalog_revision(&self) -> Result<String> {
-        Ok(format!("local-{}", chrono::Utc::now().timestamp() / 60))
+        Ok(format!("local-{}", jiff::Timestamp::now().as_second() / 60))
     }
 
     async fn check_updates(
@@ -434,14 +444,29 @@ pub(crate) struct BackendSet {
 impl BackendSet {
     pub(crate) async fn discover() -> Self {
         let mut set = tokio::task::JoinSet::new();
+        let mut task_backends = std::collections::HashMap::new();
         for &id in Backend::platform_candidates() {
-            set.spawn(async move { (id, Backend::detect_one(id).await) });
+            let task = set.spawn(async move { (id, Backend::detect_one(id).await) });
+            task_backends.insert(task.id(), id);
         }
 
         let mut results = BTreeMap::new();
-        while let Some(joined) = set.join_next().await {
-            if let Ok((id, outcome)) = joined {
-                results.insert(id, outcome);
+        while let Some(joined) = set.join_next_with_id().await {
+            match joined {
+                Ok((_, (id, outcome))) => {
+                    results.insert(id, outcome);
+                }
+                Err(error) => {
+                    if let Some(&id) = task_backends.get(&error.id()) {
+                        results.insert(
+                            id,
+                            Err(Error::internal(format!(
+                                "{} 探测意外中断：{error}",
+                                id.display_name()
+                            ))),
+                        );
+                    }
+                }
             }
         }
 
@@ -449,7 +474,12 @@ impl BackendSet {
         let mut failures = BTreeMap::new();
         let mut statuses = Vec::new();
         for &id in Backend::platform_candidates() {
-            let outcome = results.remove(&id).unwrap_or(Ok(None));
+            let outcome = results.remove(&id).unwrap_or_else(|| {
+                Err(Error::internal(format!(
+                    "缺少 {} 的探测结果。",
+                    id.display_name()
+                )))
+            });
             match outcome {
                 Ok(Some(backend)) => {
                     statuses.push(BackendStatus {

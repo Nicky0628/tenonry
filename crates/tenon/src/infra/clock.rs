@@ -1,5 +1,5 @@
-use chrono::{SecondsFormat, Utc};
+use jiff::Timestamp;
 
 pub(crate) fn now() -> String {
-    Utc::now().to_rfc3339_opts(SecondsFormat::Millis, true)
+    format!("{:.3}", Timestamp::now())
 }

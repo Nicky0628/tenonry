@@ -1,7 +1,7 @@
 use crate::error::{Error, Result};
 use std::path::Path;
 use std::process::{ExitStatus, Stdio};
-use std::sync::Arc;
+use std::sync::{Arc, Mutex};
 use std::time::Duration;
 use tokio::io::{AsyncRead, AsyncReadExt};
 use tokio::process::Command;
@@ -47,10 +47,12 @@ impl Output {
 }
 
 pub(crate) type Observer = Arc<dyn Fn(&str) + Send + Sync>;
+type Diagnostic = Arc<Mutex<Vec<u8>>>;
 
 async fn read_output(
     mut stream: impl AsyncRead + Unpin,
     observer: Option<Observer>,
+    diagnostic: Option<Diagnostic>,
 ) -> std::io::Result<(Vec<u8>, bool)> {
     let mut output = Vec::new();
     let mut buffer = vec![0u8; 8192];
@@ -60,6 +62,12 @@ async fn read_output(
         let count = stream.read(&mut buffer).await?;
         if count == 0 {
             break;
+        }
+        if let Some(diagnostic) = &diagnostic {
+            let mut tail = diagnostic.lock().unwrap_or_else(|error| error.into_inner());
+            tail.extend_from_slice(&buffer[..count]);
+            let excess = tail.len().saturating_sub(8192);
+            tail.drain(..excess);
         }
         if output.len() + count > OUTPUT_LIMIT {
             output.drain(..count.min(output.len()));
@@ -93,7 +101,15 @@ pub(crate) async fn run(program: &Path, args: &[String], mutation: bool) -> Resu
 }
 
 pub(crate) async fn metadata(program: &Path, args: &[String]) -> Result<Output> {
-    run_with_timeout(program, args, false, Duration::from_secs(45), None).await
+    metadata_with_timeout(program, args, Duration::from_secs(45)).await
+}
+
+pub(crate) async fn metadata_with_timeout(
+    program: &Path,
+    args: &[String],
+    timeout: Duration,
+) -> Result<Output> {
+    run_with_timeout(program, args, false, timeout, None).await
 }
 
 pub(crate) async fn run_stream(
@@ -129,6 +145,7 @@ async fn run_with_timeout(
     timeout: Duration,
     observer: Option<Observer>,
 ) -> Result<Output> {
+    let diagnostic: Diagnostic = Arc::default();
     let mut command = Command::new(program);
     command
         .args(args)
@@ -152,6 +169,10 @@ async fn run_with_timeout(
     }
     #[cfg(windows)]
     command.creation_flags(0x0800_0000); // CREATE_NO_WINDOW
+    #[cfg(unix)]
+    if !mutation {
+        command.process_group(0);
+    }
     let display_name = program
         .file_name()
         .and_then(|name| name.to_str())
@@ -159,6 +180,11 @@ async fn run_with_timeout(
     let mut child = command
         .spawn()
         .map_err(|error| Error::command_failed(format!("无法启动 {display_name}：{error}")))?;
+    #[cfg(unix)]
+    let process_group = child
+        .id()
+        .and_then(|id| i32::try_from(id).ok())
+        .and_then(rustix::process::Pid::from_raw);
     let stdout = child
         .stdout
         .take()
@@ -168,12 +194,21 @@ async fn run_with_timeout(
         .take()
         .ok_or_else(|| Error::internal("无法读取命令错误输出。"))?;
     let collect = async {
-        let (status, stdout, stderr) = tokio::try_join!(
-            child.wait(),
-            read_output(stdout, observer.clone()),
-            read_output(stderr, observer)
+        let (stdout, stderr) = tokio::try_join!(
+            read_output(
+                stdout,
+                observer.clone(),
+                (!mutation).then(|| diagnostic.clone())
+            ),
+            read_output(stderr, observer, (!mutation).then(|| diagnostic.clone()))
         )
         .map_err(|error| Error::command_failed(format!("无法读取命令执行结果：{error}")))?;
+        // Keep the process-group leader unreaped until its pipes close so its ID
+        // cannot be reused while a timed-out grandchild still holds a pipe open.
+        let status = child
+            .wait()
+            .await
+            .map_err(|error| Error::command_failed(format!("无法确认命令执行结果：{error}")))?;
         if !mutation && (stdout.1 || stderr.1) {
             return Err(Error::command_failed(
                 "检测输出过长，无法完整确认环境；未执行任何安装操作。",
@@ -196,9 +231,46 @@ async fn run_with_timeout(
     if mutation {
         collect.await
     } else {
-        tokio::time::timeout(timeout, collect)
-            .await
-            .map_err(|_| Error::command_failed(format!("检测 {display_name} 超时，请稍后重试。")))?
+        match tokio::time::timeout(timeout, collect).await {
+            Ok(result) => result,
+            Err(_) => {
+                // Reap the read-only child explicitly; mutations never enter this branch.
+                #[cfg(unix)]
+                if let Some(group) = process_group {
+                    match rustix::process::kill_process_group(group, rustix::process::Signal::KILL)
+                    {
+                        Ok(()) | Err(rustix::io::Errno::SRCH) => {}
+                        Err(error) => {
+                            return Err(Error::command_failed(format!(
+                                "检测 {display_name} 超时，无法结束进程组：{error}"
+                            )));
+                        }
+                    }
+                }
+                tokio::time::timeout(Duration::from_secs(5), child.kill())
+                    .await
+                    .map_err(|_| {
+                        Error::command_failed(format!(
+                            "检测 {display_name} 超时，回收进程也已超时。"
+                        ))
+                    })?
+                    .map_err(|error| {
+                        Error::command_failed(format!(
+                            "检测 {display_name} 超时，无法回收进程：{error}"
+                        ))
+                    })?;
+                let tail = diagnostic.lock().unwrap_or_else(|error| error.into_inner());
+                let details: String = String::from_utf8_lossy(&tail)
+                    .chars()
+                    .filter(|ch| !ch.is_control() || matches!(ch, '\n' | '\t'))
+                    .collect();
+                Err(Error::command_failed(format!(
+                    "检测 {display_name} 超时（{} 秒），请检查软件源与网络后重试。\n{}",
+                    timeout.as_secs_f64(),
+                    details.trim()
+                )))
+            }
+        }
     }
 }
 

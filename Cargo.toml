@@ -13,13 +13,13 @@ tenon = { path = "crates/tenon", version = "=0.1.0" }
 tokio = { version = "1", features = ["full"] }
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
-chrono = "0.4"
+jiff = { version = "1", default-features = false, features = ["std"] }
 uuid = { version = "1", features = ["v4"] }
-url = "2"
+url = "2.5.9"
 fs2 = "0.4"
 which = "8"
 tempfile = "3"
-rustix = { version = "1", features = ["fs"] }
+rustix = { version = "1", features = ["fs", "process"] }
 tauri = "2"
 tauri-build = "2"
 tauri-plugin-single-instance = "2"

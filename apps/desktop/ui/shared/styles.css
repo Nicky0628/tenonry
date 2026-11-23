@@ -2133,6 +2133,19 @@ details.tech-details[open] summary::after { content: "收起"; }
 }
 
 .version-option:last-child { border-bottom: none; }
+
+.version-pagination {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.version-page-info {
+  color: var(--text-muted);
+  font-size: 12px;
+  text-align: center;
+}
 .version-option:hover { background: var(--bg-wash); }
 .version-option.is-selected { background: var(--info-bg); }
 

@@ -2,11 +2,19 @@ import { clear, el, renderErrorBlock } from '../../shared/dom.js';
 import { backendLabel } from '../../shared/format.js';
 import { uiIcon } from '../../shared/icons.js';
 
+const PAGE_SIZE = 40;
+
 export function renderVersionDialog(host, modal, handlers) {
   const prevInput = host.querySelector('.version-search-input');
   const hadFocus = prevInput && document.activeElement === prevInput;
   const selStart = hadFocus ? prevInput.selectionStart : null;
   const selEnd = hadFocus ? prevInput.selectionEnd : null;
+  const focusedVersion = document.activeElement?.dataset.version;
+  const focusedPager = document.activeElement?.dataset.versionPageAction;
+  const previousList = host.querySelector('.version-list');
+  const previousBody = host.querySelector('.modal-body');
+  const listScroll = previousList?.scrollTop || 0;
+  const bodyScroll = previousBody?.scrollTop || 0;
 
   clear(host);
 
@@ -21,6 +29,9 @@ export function renderVersionDialog(host, modal, handlers) {
           (item.label && item.label.toLowerCase().includes(query))
       )
     : versions;
+  const pages = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
+  const page = Math.max(0, Math.min(pages - 1, modal.versionPage || 0));
+  const samePage = previousList?.dataset.page === String(page) && previousList?.dataset.query === query;
 
   const backendId = modal.data?.backend || modal.backend || tool.owner;
 
@@ -98,8 +109,12 @@ export function renderVersionDialog(host, modal, handlers) {
         )
       );
     } else {
-      const list = el('div', { className: 'version-list', attrs: { role: 'listbox', 'aria-label': '版本列表' } });
-      for (const item of filtered) {
+      const list = el('div', {
+        className: 'version-list',
+        dataset: { page, query },
+        attrs: { role: 'listbox', 'aria-label': '版本列表' },
+      });
+      for (const [offset, item] of filtered.slice(page * PAGE_SIZE, (page + 1) * PAGE_SIZE).entries()) {
         const selected = modal.selectedVersion === item.version;
         list.appendChild(
           el(
@@ -107,7 +122,13 @@ export function renderVersionDialog(host, modal, handlers) {
             {
               type: 'button',
               className: `version-option${selected ? ' is-selected' : ''}`,
-              attrs: { role: 'option', 'aria-selected': String(selected) },
+              dataset: { version: item.version },
+              attrs: {
+                role: 'option',
+                'aria-selected': String(selected),
+                'aria-setsize': filtered.length,
+                'aria-posinset': page * PAGE_SIZE + offset + 1,
+              },
               on: { click: () => handlers.selectVersion(item.version) },
             },
             el('span', { className: 'mono', text: item.label || item.version }),
@@ -121,6 +142,27 @@ export function renderVersionDialog(host, modal, handlers) {
         );
       }
       body.appendChild(list);
+      if (pages > 1) {
+        body.appendChild(el('div', { className: 'version-pagination' },
+          el('button', {
+            type: 'button', className: 'btn btn-sm', disabled: page === 0,
+            dataset: { versionPageAction: 'previous' },
+            on: { click: () => handlers.changeVersionPage(page - 1) },
+            text: '上一页',
+          }),
+          el('span', {
+            className: 'version-page-info',
+            attrs: { 'aria-live': 'polite' },
+            text: `第 ${page + 1} / ${pages} 页 · 共 ${filtered.length} 个版本`,
+          }),
+          el('button', {
+            type: 'button', className: 'btn btn-sm', disabled: page === pages - 1,
+            dataset: { versionPageAction: 'next' },
+            on: { click: () => handlers.changeVersionPage(page + 1) },
+            text: '下一页',
+          }),
+        ));
+      }
     }
   }
 
@@ -174,6 +216,12 @@ export function renderVersionDialog(host, modal, handlers) {
   dialog.appendChild(footer);
   host.appendChild(dialog);
 
+  const updatedList = host.querySelector('.version-list');
+  if (samePage && updatedList) {
+    updatedList.scrollTop = listScroll;
+    body.scrollTop = bodyScroll;
+  }
+
   if (hadFocus) {
     const input = host.querySelector('.version-search-input');
     if (input) {
@@ -182,5 +230,14 @@ export function renderVersionDialog(host, modal, handlers) {
         input.setSelectionRange(selStart, selEnd);
       }
     }
+  }
+  if (focusedVersion) {
+    [...host.querySelectorAll('.version-option')]
+      .find((node) => node.dataset.version === focusedVersion)?.focus({ preventScroll: true });
+  }
+  if (focusedPager) {
+    const controls = [...host.querySelectorAll('[data-version-page-action]')];
+    (controls.find((node) => node.dataset.versionPageAction === focusedPager && !node.disabled)
+      || controls.find((node) => !node.disabled))?.focus({ preventScroll: true });
   }
 }

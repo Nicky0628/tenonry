@@ -6,7 +6,7 @@ use crate::infra::{
     record,
 };
 use crate::model::{BackendId, CatalogStatus};
-use chrono::{DateTime, Utc};
+use jiff::Timestamp;
 use std::collections::BTreeMap;
 use std::path::PathBuf;
 use std::sync::{Arc, Mutex as StdMutex};
@@ -54,8 +54,8 @@ pub(crate) struct CatalogSnapshot {
 
 fn is_fresh(status: &CatalogStatus, id: BackendId) -> bool {
     status.backend == id
-        && DateTime::parse_from_rfc3339(&status.checked_at).is_ok_and(|at| {
-            (0..FRESH_SECONDS).contains(&(Utc::now() - at.with_timezone(&Utc)).num_seconds())
+        && status.checked_at.parse::<Timestamp>().is_ok_and(|at| {
+            (0..FRESH_SECONDS).contains(&(Timestamp::now().as_second() - at.as_second()))
         })
 }
 

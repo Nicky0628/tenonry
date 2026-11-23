@@ -167,13 +167,16 @@ impl Engine {
             let _permit = permit;
             let _lock = lock;
             let worker = progress.clone();
-            let result = tokio::spawn(async move { run_batch(&engine, &batch, &worker).await })
-                .await
-                .unwrap_or_else(|error| {
-                    Err(Error::internal(format!(
-                        "操作意外中断，请确认当前状态：{error}"
-                    )))
-                });
+            let worker_engine = engine.clone();
+            let result =
+                tokio::spawn(async move { run_batch(&worker_engine, &batch, &worker).await })
+                    .await
+                    .unwrap_or_else(|error| {
+                        Err(Error::internal(format!(
+                            "操作意外中断，请确认当前状态：{error}"
+                        )))
+                    });
+            engine.invalidate_reports().await;
             progress.finish(result);
         });
 

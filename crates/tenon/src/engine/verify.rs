@@ -7,6 +7,7 @@ use crate::model::{
 };
 use crate::registry;
 use std::collections::BTreeMap;
+use std::sync::Arc;
 
 pub(crate) async fn verify_batch(
     plan: &BatchPlan,
@@ -14,14 +15,16 @@ pub(crate) async fn verify_batch(
     mut details: String,
     per_tool_execution: &BTreeMap<String, ExecutionState>,
 ) -> Result<Outcome> {
-    let report = match inspect::collect_full_report().await {
+    // Discover after execution and use the same live package snapshot for both
+    // executable ownership and target verification instead of discovering twice.
+    let backends = Arc::new(BackendSet::discover().await);
+    let report = match inspect::collect_full_report(backends.clone()).await {
         Ok(report) => Some(report),
         Err(error) => {
             details.push_str(&format!("\n无法确认工具状态：{error}"));
             None
         }
     };
-    let backends = BackendSet::discover().await;
 
     let mut items = Vec::with_capacity(plan.plans.len());
     for target in &plan.plans {

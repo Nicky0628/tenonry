@@ -171,6 +171,12 @@ const handlers = {
   setVersionQuery(query) {
     if (state.modal?.type !== 'version') return;
     state.modal.query = query;
+    state.modal.versionPage = 0;
+    renderModal();
+  },
+  changeVersionPage(page) {
+    if (state.modal?.type !== 'version') return;
+    state.modal.versionPage = page;
     renderModal();
   },
   selectVersion(version) {
@@ -463,7 +469,7 @@ async function pollRunningOperation() {
           ? `${actionLabel(latest.action)} ${latest.name} 已完成`
           : `${actionLabel(latest.action)} ${latest.name} 需要关注`;
       showToast(doneMsg, latest.state === 'completed' ? 'ok' : 'warn');
-      void loadEnvironment(true);
+      void loadEnvironment(false, true);
     }
   } catch {
     // Transient polling error; retry next tick.
@@ -481,11 +487,11 @@ async function loadOperations() {
   }
 }
 
-async function loadEnvironment(force = false) {
+async function loadEnvironment(force = false, resetUpdates = force) {
   const epoch = ++state.inventoryEpoch;
   state.loadingInventory = true;
   state.inventoryError = null;
-  if (force) {
+  if (resetUpdates) {
     state.updates.clear();
     state.checkingUpdates = false;
     state.checkingToolIds.clear();

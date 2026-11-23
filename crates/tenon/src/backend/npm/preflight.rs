@@ -47,14 +47,6 @@ pub(super) async fn prepare(
         )
     };
 
-    if let Some(version) = &candidate {
-        let manifest =
-            metadata::read(ctx, backend, &format!("{name}@{version}"), "version").await?;
-        if manifest.as_str() != Some(version) {
-            return Err(Error::plan_expired("所选版本已不可用，请重新选择。"));
-        }
-    }
-
     let unchanged = current == candidate;
     let administrator = !privilege::is_writable(&npm.prefix)
         || !privilege::is_writable(&npm.root)
@@ -95,6 +87,11 @@ pub(super) async fn prepare(
             .map_or_else(|| name.to_owned(), |version| format!("{name}@{version}")),
     );
     args.extend(process::args(&["--engine-strict", "--foreground-scripts"]));
+    if candidate.is_some() {
+        // Targets are exact versions. Reuse verified npm cache entries while still
+        // fetching missing data and enforcing engines during the dry run/install.
+        args.push("--prefer-offline".into());
+    }
 
     if !unchanged && candidate.is_some() {
         let mut preview_args = args.clone();

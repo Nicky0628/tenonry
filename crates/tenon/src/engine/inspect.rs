@@ -9,6 +9,7 @@ use crate::model::{
 use crate::registry;
 use std::collections::BTreeSet;
 use std::path::{Path, PathBuf};
+use std::sync::Arc;
 use std::time::{Duration, Instant};
 
 const SYSTEM_CACHE_TTL_SECONDS: u64 = 30;
@@ -33,9 +34,7 @@ impl Engine {
         }
         let mut indexed = Vec::new();
         while let Some(joined) = set.join_next().await {
-            if let Ok(item) = joined {
-                indexed.push(item);
-            }
+            indexed.push(joined.map_err(|error| crate::Error::internal(error.to_string()))?);
         }
         indexed.sort_by_key(|(index, _)| *index);
         let tools = indexed.into_iter().map(|(_, status)| status).collect();
@@ -74,6 +73,10 @@ impl Engine {
         let _permit = self.read_permit().await?;
         if force {
             self.backend_ctx.metadata.clear().await;
+            self.update_cache
+                .lock()
+                .map_err(|_| crate::Error::internal("无法清除更新缓存。"))?
+                .clear();
         }
         let specs = registry::requested(ids)?;
         let mut cache = self.system_cache.lock().await;
@@ -82,24 +85,29 @@ impl Engine {
             && at.elapsed() < Duration::from_secs(SYSTEM_CACHE_TTL_SECONDS)
             && specs
                 .iter()
-                .map(|spec| spec.id)
-                .eq(report.tools.iter().map(|tool| tool.status.id.as_str()))
+                .all(|spec| report.tools.iter().any(|tool| tool.status.id == spec.id))
         {
-            return Ok(report.clone());
+            let mut selected = report.clone();
+            selected
+                .tools
+                .retain(|tool| specs.iter().any(|spec| tool.status.id == spec.id));
+            return Ok(selected);
         }
-        let report = collect_report(&specs).await?;
+        let report = collect_report(&specs, Arc::new(BackendSet::discover().await)).await?;
         *cache = Some((Instant::now(), report.clone()));
         Ok(report)
     }
 }
 
-pub(crate) async fn collect_full_report() -> Result<SystemReport> {
+pub(crate) async fn collect_full_report(backends: Arc<BackendSet>) -> Result<SystemReport> {
     let specs = registry::requested(None)?;
-    collect_report(&specs).await
+    collect_report(&specs, backends).await
 }
 
-async fn collect_report(specs: &[&'static ToolSpec]) -> Result<SystemReport> {
-    let backends = std::sync::Arc::new(BackendSet::discover().await);
+async fn collect_report(
+    specs: &[&'static ToolSpec],
+    backends: Arc<BackendSet>,
+) -> Result<SystemReport> {
     if specs.is_empty() {
         return Ok(SystemReport {
             tools: Vec::new(),
@@ -140,9 +148,7 @@ async fn collect_report(specs: &[&'static ToolSpec]) -> Result<SystemReport> {
 
     let mut indexed = Vec::with_capacity(specs.len());
     while let Some(joined) = set.join_next().await {
-        if let Ok(item) = joined {
-            indexed.push(item);
-        }
+        indexed.push(joined.map_err(|error| crate::Error::internal(error.to_string()))?);
     }
     indexed.sort_by_key(|(index, _)| *index);
 

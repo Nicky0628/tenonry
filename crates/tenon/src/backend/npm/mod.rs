@@ -18,6 +18,7 @@ pub(super) struct NpmInstallation {
     pub(super) prefix: PathBuf,
     pub(super) root: PathBuf,
     pub(super) registry: String,
+    global_config: PathBuf,
 }
 
 impl NpmInstallation {
@@ -45,7 +46,38 @@ impl NpmInstallation {
     }
 
     pub(super) async fn dry_run_json(&self, args: &[String]) -> Result<Value> {
-        let output = process::run(&self.node, &self.arguments(args), false)
+        // npm 9 cannot dry-run a global install before prefix/lib exists. Probe an
+        // empty temporary prefix instead of creating directories in the real one.
+        let temporary =
+            if self
+                .root
+                .try_exists()
+                .map_err(|error| Error::persistence(format!("无法检查 npm 全局目录：{error}")))?
+            {
+                None
+            } else {
+                Some(tempfile::tempdir().map_err(|error| {
+                    Error::persistence(format!("无法准备 npm 预检目录：{error}"))
+                })?)
+            };
+        let mut installation = self.clone();
+        if let Some(directory) = &temporary {
+            installation.prefix = directory.path().to_path_buf();
+            installation.root = if cfg!(windows) {
+                installation.prefix.join("node_modules")
+            } else {
+                installation.prefix.join("lib/node_modules")
+            };
+            std::fs::create_dir_all(&installation.root)
+                .map_err(|error| Error::persistence(format!("无法准备 npm 预检目录：{error}")))?;
+        }
+        let mut arguments = installation.arguments(args);
+        if temporary.is_some() {
+            // Changing prefix also changes npm's default global npmrc path. Keep
+            // the real configuration (proxy, CA, authentication) for the preview.
+            arguments.push(format!("--globalconfig={}", self.global_config.display()));
+        }
+        let output = process::run(&installation.node, &arguments, false)
             .await?
             .checked_stdout()?;
         let trimmed = output.trim();
@@ -123,7 +155,13 @@ impl NpmBackend {
 
         let mut read_args = vec![cli.to_string_lossy().into_owned()];
         read_args.extend(process::args(&[
-            "config", "get", "prefix", "registry", "--global", "--json",
+            "config",
+            "get",
+            "prefix",
+            "registry",
+            "globalconfig",
+            "--global",
+            "--json",
         ]));
         let output = process::run(&node, &read_args, false)
             .await?
@@ -139,7 +177,9 @@ impl NpmBackend {
                         .split_once('=')
                         .ok_or_else(|| Error::internal("无法解析 npm 配置。"))?;
                     let key = key.trim();
-                    if !matches!(key, "prefix" | "registry") || values.contains_key(key) {
+                    if !matches!(key, "prefix" | "registry" | "globalconfig")
+                        || values.contains_key(key)
+                    {
                         return Err(Error::internal("npm 配置字段无效。"));
                     }
                     values.insert(key.into(), Value::String(value.trim().into()));
@@ -172,6 +212,14 @@ impl NpmBackend {
         if !prefix.is_absolute() {
             return Err(Error::conflict("npm 全局目录不是绝对路径。"));
         }
+        let global_config = PathBuf::from(
+            config["globalconfig"]
+                .as_str()
+                .ok_or_else(|| Error::internal("npm 未提供全局配置路径。"))?,
+        );
+        if !global_config.is_absolute() {
+            return Err(Error::conflict("npm 全局配置不是绝对路径。"));
+        }
         let root = if cfg!(windows) {
             prefix.join("node_modules")
         } else {
@@ -184,6 +232,7 @@ impl NpmBackend {
             prefix,
             root,
             registry,
+            global_config,
         };
         let installed = read_global_packages(&installation.root)?;
         Ok(Some(Self {

@@ -6,14 +6,9 @@ use crate::model::{BackendId, Change, ToolSpec, VersionInfo, VersionList};
 use serde_json::Value;
 use std::collections::BTreeMap;
 
-pub(super) async fn read(
-    ctx: &BackendContext,
-    backend: &NpmBackend,
-    package: &str,
-    field: &str,
-) -> Result<Value> {
+async fn read(ctx: &BackendContext, backend: &NpmBackend, package: &str) -> Result<Value> {
     let key = format!(
-        "npm|{}|{}|{}|{}|{package}|{field}",
+        "npm|{}|{}|{}|{}|{package}",
         backend.installation.node.display(),
         backend.installation.cli.display(),
         backend.installation.prefix.display(),
@@ -22,12 +17,19 @@ pub(super) async fn read(
     if let Some(value) = ctx.metadata.get(&key).await {
         return Ok(value);
     }
-    let mut args = process::args(&["view", package]);
-    if !field.is_empty() {
-        args.push(field.into());
+    let _request = ctx.metadata.request(&key).await;
+    if let Some(value) = ctx.metadata.get(&key).await {
+        return Ok(value);
     }
-    args.push("--json".into());
+    // npm fetches the complete packument even for one field. Share one request
+    // between version selection and latest-version checks, including in flight.
+    let args = process::args(&["view", package, "versions", "dist-tags", "--json"]);
     let value = backend.installation.json(&args).await?;
+    if !value["dist-tags"].is_object()
+        || !(value["versions"].is_array() || value["versions"].is_string())
+    {
+        return Err(Error::internal("npm 未返回完整的版本与发布标签信息。"));
+    }
     ctx.metadata.insert(key, value.clone()).await;
     Ok(value)
 }
@@ -53,8 +55,8 @@ pub(super) async fn latest(
     backend: &NpmBackend,
     name: &str,
 ) -> Result<String> {
-    let value = read(ctx, backend, name, "dist-tags.latest").await?;
-    let version = value
+    let value = read(ctx, backend, name).await?;
+    let version = value["dist-tags"]["latest"]
         .as_str()
         .filter(|version| semver_triplet(version).is_some())
         .ok_or_else(|| Error::not_found("npm 未提供正式推荐版本，请指定目标版本。"))?;
@@ -68,8 +70,8 @@ pub(super) async fn list_versions(
 ) -> Result<VersionList> {
     let name = mapping::package_name(spec.id)
         .ok_or_else(|| Error::unsupported("此工具没有 npm 软件包。"))?;
-    let data = read(ctx, backend, name, "versions").await?;
-    let values = match data {
+    let mut data = read(ctx, backend, name).await?;
+    let values = match data["versions"].take() {
         Value::Array(values) => values,
         Value::String(value) => vec![Value::String(value)],
         _ => return Err(Error::internal("npm 版本列表无效。")),
