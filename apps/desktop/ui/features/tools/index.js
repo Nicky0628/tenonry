@@ -606,36 +606,18 @@ function renderToolRow(tool, update, checkingThis, isSelected, taskLocked, index
     );
   }
 
-  // Minimal focused actions: fixed 3-slot alignment ("版本" | primary CTA | "详情")
+  // Minimal focused actions: fixed 3-slot alignment (primary CTA | "版本" | "详情")
+  // Uninstalled rows omit inline "版本" (selectable inside detail drawer / install plan)
+  // and align "安装" flush against "详情" to avoid empty column gaps.
   const actionsCell = el('div', { className: 'tool-actions-cell' });
   if (!tool.isProbeOnly) {
-    if (tool.canSelectVersion) {
-      actionsCell.appendChild(
-        el(
-          'button',
-          {
-            type: 'button',
-            className: 'btn btn-ghost btn-sm row-quiet-action action-slot-version',
-            disabled: taskLocked,
-            on: {
-              click: (event) => {
-                event.stopPropagation();
-                handlers.openVersionPicker(tool);
-              },
-            },
-          },
-          '版本'
-        )
-      );
-    }
-
     if (canInstall) {
       actionsCell.appendChild(
         el(
           'button',
           {
             type: 'button',
-            className: 'btn btn-soft btn-sm action-slot-primary',
+            className: 'btn btn-soft btn-sm action-slot-primary is-install',
             disabled: taskLocked,
             on: {
               click: (event) => {
@@ -694,6 +676,26 @@ function renderToolRow(tool, update, checkingThis, isSelected, taskLocked, index
           },
           uiIcon('refresh'),
           '重试'
+        )
+      );
+    }
+
+    if (!canInstall && tool.canSelectVersion) {
+      actionsCell.appendChild(
+        el(
+          'button',
+          {
+            type: 'button',
+            className: 'btn btn-ghost btn-sm row-quiet-action action-slot-version',
+            disabled: taskLocked,
+            on: {
+              click: (event) => {
+                event.stopPropagation();
+                handlers.openVersionPicker(tool);
+              },
+            },
+          },
+          '版本'
         )
       );
     }

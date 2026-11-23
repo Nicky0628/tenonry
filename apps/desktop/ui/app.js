@@ -156,7 +156,7 @@ const handlers = {
     void runRecheckOperation(id);
   },
   openVersionPicker(tool, preferredBackend = null) {
-    lastTriggerElement = document.activeElement;
+    if (!state.modal) lastTriggerElement = document.activeElement;
     const backend = preferredBackend || tool.owner || tool.availableBackends?.[0] || null;
     state.modal = {
       type: 'version',
@@ -251,6 +251,7 @@ const handlers = {
   changeSinglePlanBackend(backendId) {
     if (state.modal?.type !== 'plan' || state.modal.mode !== 'single') return;
     state.modal.input.backend = backendId;
+    state.modal.input.version = null;
     handlers.regeneratePlan();
   },
   regeneratePlan() {

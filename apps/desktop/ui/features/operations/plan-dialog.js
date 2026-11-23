@@ -156,6 +156,37 @@ export function renderPlanDialog(host, modal, state, handlers) {
     ? Boolean(modal.batchPlan?.transactions?.some((tx) => (tx.commands || []).length > 0))
     : Boolean(modal.plan && modal.plan.preview?.state !== 'current' && (modal.plan.commands || []).length > 0);
 
+  const singleTool = !isBatch
+    ? state.systemReport?.tools?.find((t) => t.id === modal.input.toolId) || null
+    : null;
+  const activeInstallBackend =
+    !isBatch && modal.input.action === 'install'
+      ? modal.input.backend || modal.plan?.backend || singleTool?.availableBackends?.[0] || null
+      : null;
+  const activeBackendInfo = activeInstallBackend
+    ? state.systemReport?.backends?.find((b) => b.id === activeInstallBackend) || null
+    : null;
+  const canPickInstallVersion =
+    !isBatch &&
+    modal.input.action === 'install' &&
+    Boolean(singleTool?.canSelectVersion) &&
+    (activeBackendInfo ? Boolean(activeBackendInfo.capabilities?.versionSelection) : true);
+
+  if (canPickInstallVersion) {
+    left.appendChild(
+      el(
+        'button',
+        {
+          type: 'button',
+          className: 'btn',
+          disabled: modal.starting,
+          on: { click: () => handlers.openVersionPicker(singleTool, activeInstallBackend) },
+        },
+        modal.input.version ? '切换版本' : '选择版本'
+      )
+    );
+  }
+
   if (modal.error || modal.startError || modal.selectionDirty) {
     left.appendChild(
       el(
