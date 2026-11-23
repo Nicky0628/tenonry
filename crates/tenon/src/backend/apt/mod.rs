@@ -394,7 +394,17 @@ impl BackendDriver for AptBackend {
             return versions::plan_version(self, spec, tool, action, version).await;
         }
         let packages: Vec<String> = match action {
-            Action::Install => process::args(mapping::default_packages(spec.id)),
+            Action::Install => {
+                if spec.id == "dotnet" {
+                    if let Some(newest) = versions::newest_primary_package(self, spec).await? {
+                        vec![newest]
+                    } else {
+                        process::args(mapping::default_packages(spec.id))
+                    }
+                } else {
+                    process::args(mapping::default_packages(spec.id))
+                }
+            }
             Action::Update => self.update_packages(spec, &tool.packages),
             Action::Uninstall => tool
                 .packages

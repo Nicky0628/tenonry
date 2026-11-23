@@ -436,7 +436,7 @@ impl BackendDriver for NpmBackend {
                         let expected = format!(
                             "node_modules\\{}\\{}",
                             package.name.replace('/', "\\"),
-                            target.replace('/', "\\")
+                            target.trim_start_matches("./").replace('/', "\\")
                         );
                         if !launcher.contains(&expected) {
                             return Err(Error::conflict("npm 命令入口与安装记录不符。"));

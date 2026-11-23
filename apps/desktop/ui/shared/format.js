@@ -7,10 +7,13 @@ export const BACKEND_NAMES = {
 };
 
 export const CATEGORY_LABELS = {
+  languages: '语言与运行时',
   'package-managers': '包管理',
   'version-control': '版本控制',
-  languages: '语言与运行时',
-  build: '构建工具',
+  build: '构建与编译',
+  containers: '容器与云原生',
+  databases: '数据库客户端',
+  cli: '终端与常用工具',
 };
 
 export const ACTION_LABELS = {

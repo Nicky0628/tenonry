@@ -130,12 +130,32 @@ pub(crate) async fn version(program: &Path, args: &[&str]) -> Result<String> {
     )
     .await?
     .checked()?;
-    output
+    let lines: Vec<_> = output
         .lines()
         .map(str::trim)
-        .find(|line| !line.is_empty())
+        .filter(|line| !line.is_empty())
+        .collect();
+    let selected = lines
+        .iter()
+        .copied()
+        .find(|line| has_dotted_version(line))
+        .or_else(|| {
+            lines
+                .iter()
+                .copied()
+                .find(|line| line.chars().any(|ch| ch.is_ascii_digit()))
+        })
+        .or_else(|| lines.first().copied());
+    selected
         .map(str::to_owned)
         .ok_or_else(|| Error::command_failed("命令执行成功，但没有返回版本信息。"))
+}
+
+fn has_dotted_version(line: &str) -> bool {
+    let bytes = line.as_bytes();
+    bytes
+        .windows(3)
+        .any(|window| window[0].is_ascii_digit() && window[1] == b'.' && window[2].is_ascii_digit())
 }
 
 async fn run_with_timeout(
@@ -154,6 +174,7 @@ async fn run_with_timeout(
         .env("LC_ALL", "C")
         .env("LANG", "C")
         .env("RUSTUP_AUTO_INSTALL", "0")
+        .env("CHECKPOINT_DISABLE", "1")
         .stdin(Stdio::null())
         .stdout(Stdio::piped())
         .stderr(Stdio::piped())

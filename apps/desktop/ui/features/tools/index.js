@@ -1,5 +1,6 @@
 import { clear, el, renderErrorBlock } from '../../shared/dom.js';
 import {
+  CATEGORY_LABELS,
   backendLabel,
   categoryLabel,
   extractCandidateVersion,
@@ -277,10 +278,58 @@ export function renderToolsView(container, state, handlers) {
     tabsTrack.appendChild(btn);
   }
 
-  const visibleTools = tools.filter((tool) => {
+  const query = state.toolQuery.trim();
+  const statusAndQueryTools = tools.filter((tool) => {
     const update = state.updates.get(tool.id);
-    return matchesFilter(tool, update, state.toolFilter) && matchesQuery(tool, tool.category, state.toolQuery.trim());
+    return matchesFilter(tool, update, state.toolFilter) && matchesQuery(tool, tool.category, query);
   });
+
+  const activeCategory = state.toolCategory || 'all';
+  const visibleTools =
+    activeCategory === 'all'
+      ? statusAndQueryTools
+      : statusAndQueryTools.filter((tool) => tool.category === activeCategory);
+
+  const presentCategories = new Set(tools.map((tool) => tool.category).filter(Boolean));
+  const orderedCategories = [
+    ...Object.keys(CATEGORY_LABELS).filter((id) => presentCategories.has(id)),
+    ...[...presentCategories].filter((id) => !(id in CATEGORY_LABELS)),
+  ];
+
+  const categoryStrip = el('div', {
+    className: 'category-strip',
+    attrs: { role: 'group', 'aria-label': '工具分类筛选' },
+  });
+  const categoryOptions = [
+    { id: 'all', label: '全部分类', count: statusAndQueryTools.length },
+    ...orderedCategories.map((id) => ({
+      id,
+      label: categoryLabel(id),
+      count: statusAndQueryTools.filter((tool) => tool.category === id).length,
+    })),
+  ];
+  for (const option of categoryOptions) {
+    const selected = activeCategory === option.id;
+    categoryStrip.appendChild(
+      el(
+        'button',
+        {
+          type: 'button',
+          className: `category-chip${selected ? ' is-active' : ''}${option.count === 0 && !selected ? ' is-empty' : ''}`,
+          attrs: { 'aria-pressed': String(selected) },
+          on: { click: () => handlers.setToolCategory(option.id) },
+        },
+        el('span', { text: option.label }),
+        el('span', { className: 'category-chip-count tabular', text: String(option.count) })
+      )
+    );
+  }
+
+  const metaRightText = query
+    ? `搜索“${query}” · ${visibleTools.length} 项`
+    : activeCategory !== 'all'
+      ? `${categoryLabel(activeCategory)} · ${visibleTools.length} 项`
+      : '';
 
   inner.appendChild(
     el(
@@ -291,13 +340,14 @@ export function renderToolsView(container, state, handlers) {
         'div',
         { className: 'tab-bar-wrap' },
         tabsTrack,
-        state.toolQuery.trim()
+        metaRightText
           ? el('span', {
               className: 'tab-meta-right tabular',
-              text: `搜索“${state.toolQuery.trim()}” · ${visibleTools.length} 项`,
+              text: metaRightText,
             })
           : null
-      )
+      ),
+      orderedCategories.length > 1 ? categoryStrip : null
     )
   );
 
@@ -318,9 +368,10 @@ export function renderToolsView(container, state, handlers) {
           className: 'empty-state-desc',
           text: state.loadingInventory
             ? '离线探测正在识别可执行文件与包管理器归属。'
-            : '可以切换上方标签或清空底部搜索栏关键词。',
+            : '可以切换上方状态、分类筛选，或清空底部搜索栏关键词。',
         }),
-        !state.loadingInventory && (state.toolFilter !== 'all' || state.toolQuery)
+        !state.loadingInventory &&
+          (state.toolFilter !== 'all' || activeCategory !== 'all' || state.toolQuery)
           ? el(
               'button',
               {
@@ -334,7 +385,7 @@ export function renderToolsView(container, state, handlers) {
       )
     );
   } else {
-    const shouldGroup = state.toolFilter === 'all' && !state.toolQuery.trim() && !state.loadingInventory;
+    const shouldGroup = state.toolFilter === 'all' && !query && !state.loadingInventory;
     const groups = shouldGroup
       ? groupToolsForAllView(visibleTools, state.updates)
       : [{ title: null, items: visibleTools }];

@@ -118,7 +118,8 @@ fn match_program_name(spec: &ToolSpec, path: &Path) -> Option<String> {
         let lower = raw.to_ascii_lowercase();
         lower
             .strip_suffix(".exe")
-            .or_else(|| lower.strip_suffix(".cmd"))?
+            .or_else(|| lower.strip_suffix(".cmd"))
+            .or_else(|| lower.strip_suffix(".bat"))?
             .to_owned()
     };
     #[cfg(not(windows))]

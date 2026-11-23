@@ -14,8 +14,8 @@ import { renderMonitorDialog } from './features/operations/monitor-dialog.js';
 const THEME_STORAGE_KEY = 'tenon.theme';
 
 const DOCK_HINTS = [
-  '搜索工具、包名或后端…',
-  '试试输入 node、python 或 git…',
+  '搜索工具、分类、包名或后端…',
+  '试试输入 node、docker、ripgrep 或 neovim…',
   '按 Ctrl+K 随时聚焦快捷检索…',
   '输入 winget、apt 或 npm 筛选归属…',
 ];
@@ -39,6 +39,7 @@ const state = {
   refreshingBackends: new Set(),
 
   toolFilter: 'all',
+  toolCategory: 'all',
   toolQuery: '',
   selectedToolId: null,
   animateToolsEntrance: true,
@@ -93,6 +94,16 @@ const handlers = {
     }
     renderCurrentView();
   },
+  setToolCategory(categoryId) {
+    if (state.toolCategory === categoryId && state.view === 'tools') return;
+    state.toolCategory = categoryId;
+    state.animateToolsEntrance = true;
+    if (state.view !== 'tools') {
+      state.view = 'tools';
+      renderChrome();
+    }
+    renderCurrentView();
+  },
   setToolQuery(query) {
     state.toolQuery = query;
     syncDockInput();
@@ -104,6 +115,7 @@ const handlers = {
   },
   resetToolFilters() {
     state.toolFilter = 'all';
+    state.toolCategory = 'all';
     state.toolQuery = '';
     state.animateToolsEntrance = true;
     syncDockInput();

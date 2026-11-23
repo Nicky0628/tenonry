@@ -317,22 +317,66 @@ fn push_clean_dir(target: &mut Vec<PathBuf>, raw: &str) {
     }
 }
 
+fn name_matches_exact_or_versioned(name: &str, base: &str) -> bool {
+    name == base
+        || name
+            .strip_prefix(base)
+            .and_then(|rest| rest.strip_prefix(' '))
+            .is_some_and(|rest| {
+                rest.trim_start_matches('v')
+                    .starts_with(|ch: char| ch.is_ascii_digit())
+            })
+}
+
+fn extract_major_minor(text: &str) -> Option<String> {
+    for token in text.split(|ch: char| !ch.is_ascii_digit() && ch != '.') {
+        let parts: Vec<_> = token
+            .split('.')
+            .filter(|part| !part.is_empty())
+            .take(2)
+            .collect();
+        if parts.len() == 2 {
+            return Some(parts.join("."));
+        }
+    }
+    None
+}
+
 impl InstalledApplication {
     fn tool(&self) -> Option<&'static str> {
-        let name = self.display_name.to_ascii_lowercase();
-        if name == "git lfs" {
+        let name = self.display_name.trim().to_ascii_lowercase();
+        if name == "git lfs" || name_matches_exact_or_versioned(&name, "git lfs") {
             Some("git-lfs")
         } else if name == "git"
             || name.starts_with("git version ")
-            || name
-                .strip_prefix("git ")
-                .is_some_and(|version| version.starts_with(|ch: char| ch.is_ascii_digit()))
+            || name_matches_exact_or_versioned(&name, "git")
         {
             Some("git")
         } else if name.starts_with("github cli") {
             Some("gh")
+        } else if name == "glab"
+            || name.starts_with("gitlab cli")
+            || name_matches_exact_or_versioned(&name, "glab")
+        {
+            Some("glab")
+        } else if name_matches_exact_or_versioned(&name, "lazygit") {
+            Some("lazygit")
+        } else if name == "git-delta"
+            || name_matches_exact_or_versioned(&name, "git-delta")
+            || name_matches_exact_or_versioned(&name, "delta")
+        {
+            Some("delta")
         } else if name == "pnpm" || name.starts_with("pnpm ") {
             Some("pnpm")
+        } else if name_matches_exact_or_versioned(&name, "yarn") {
+            Some("yarn")
+        } else if name_matches_exact_or_versioned(&name, "uv") {
+            Some("uv")
+        } else if name == "composer"
+            || name.starts_with("composer -")
+            || name_matches_exact_or_versioned(&name, "composer")
+        {
+            Some("composer")
         } else if name == "node.js" || name.starts_with("node.js ") {
             Some("node")
         } else if name.starts_with("python ") && !name.contains("launcher") {
@@ -345,11 +389,99 @@ impl InstalledApplication {
             Some("java")
         } else if name.starts_with(".net sdk") || name.starts_with("microsoft .net sdk") {
             Some("dotnet")
+        } else if name_matches_exact_or_versioned(&name, "ruby")
+            && self.major_minor_version().is_some()
+        {
+            Some("ruby")
+        } else if name_matches_exact_or_versioned(&name, "php")
+            && self.major_minor_version().is_some()
+        {
+            Some("php")
+        } else if name_matches_exact_or_versioned(&name, "zig") {
+            Some("zig")
+        } else if name_matches_exact_or_versioned(&name, "bun") {
+            Some("bun")
+        } else if name_matches_exact_or_versioned(&name, "deno") {
+            Some("deno")
         } else if name == "cmake" || name.starts_with("cmake ") {
             Some("cmake")
+        } else if name == "llvm" || name_matches_exact_or_versioned(&name, "llvm") {
+            Some("clang")
+        } else if name == "gnu make"
+            || name.starts_with("gnu make ")
+            || name.starts_with("gnuwin32: make")
+            || name_matches_exact_or_versioned(&name, "make")
+        {
+            Some("make")
+        } else if name_matches_exact_or_versioned(&name, "ninja") {
+            Some("ninja")
+        } else if name == "meson"
+            || name.starts_with("meson build")
+            || name_matches_exact_or_versioned(&name, "meson")
+        {
+            Some("meson")
+        } else if name_matches_exact_or_versioned(&name, "just") {
+            Some("just")
+        } else if name == "protobuf"
+            || name.starts_with("protocol buffers")
+            || name_matches_exact_or_versioned(&name, "protobuf")
+        {
+            Some("protoc")
+        } else if name == "docker desktop"
+            || name == "docker cli"
+            || name_matches_exact_or_versioned(&name, "docker cli")
+        {
+            Some("docker")
+        } else if !name.contains("desktop") && name_matches_exact_or_versioned(&name, "podman") {
+            Some("podman")
+        } else if name_matches_exact_or_versioned(&name, "kubectl")
+            || name_matches_exact_or_versioned(&name, "kubernetes cli")
+        {
+            Some("kubectl")
+        } else if name_matches_exact_or_versioned(&name, "helm") {
+            Some("helm")
+        } else if name_matches_exact_or_versioned(&name, "terraform") {
+            Some("terraform")
+        } else if name == "sqlite"
+            || name == "sqlite3"
+            || name_matches_exact_or_versioned(&name, "sqlite")
+            || name_matches_exact_or_versioned(&name, "sqlite3")
+        {
+            Some("sqlite")
+        } else if name_matches_exact_or_versioned(&name, "neovim") {
+            Some("neovim")
+        } else if name_matches_exact_or_versioned(&name, "vim") {
+            Some("vim")
+        } else if name == "ripgrep" || name.starts_with("ripgrep ") {
+            Some("ripgrep")
+        } else if name_matches_exact_or_versioned(&name, "fd") {
+            Some("fd")
+        } else if name_matches_exact_or_versioned(&name, "bat") {
+            Some("bat")
+        } else if name_matches_exact_or_versioned(&name, "jq") {
+            Some("jq")
+        } else if name_matches_exact_or_versioned(&name, "fzf") {
+            Some("fzf")
+        } else if name_matches_exact_or_versioned(&name, "shellcheck") {
+            Some("shellcheck")
+        } else if name_matches_exact_or_versioned(&name, "shfmt") {
+            Some("shfmt")
+        } else if name_matches_exact_or_versioned(&name, "starship") {
+            Some("starship")
+        } else if name_matches_exact_or_versioned(&name, "zoxide") {
+            Some("zoxide")
+        } else if name_matches_exact_or_versioned(&name, "eza") {
+            Some("eza")
         } else {
             None
         }
+    }
+
+    fn major_minor_version(&self) -> Option<String> {
+        self.display_version
+            .as_deref()
+            .and_then(extract_major_minor)
+            .or_else(|| extract_major_minor(&self.display_name))
     }
 
     fn python_minor(&self) -> Option<String> {
@@ -381,24 +513,65 @@ impl InstalledApplication {
     }
 
     pub(super) fn package(&self) -> Option<Package> {
+        let lower = self.display_name.to_ascii_lowercase();
         let name = match self.tool()? {
             "git" => "Git.Git".into(),
             "git-lfs" => "GitHub.GitLFS".into(),
             "gh" => "GitHub.cli".into(),
+            "glab" => "GLab.GLab".into(),
+            "lazygit" => "JesseDuffield.lazygit".into(),
+            "delta" => "dandavison.delta".into(),
             "node" => "OpenJS.NodeJS".into(),
             "pnpm" => "pnpm.pnpm".into(),
+            "yarn" => "YarnPkg.Yarn".into(),
+            "uv" => "astral-sh.uv".into(),
+            "composer" => "Composer.Composer".into(),
             "python" => format!("Python.Python.{}", self.python_minor()?),
-            "rust" if self.display_name.to_ascii_lowercase().contains("rustup") => {
-                "Rustlang.Rustup".into()
-            }
-            "rust" if self.display_name.to_ascii_lowercase().contains("gnu") => {
-                "Rustlang.Rust.GNU".into()
-            }
+            "rust" if lower.contains("rustup") => "Rustlang.Rustup".into(),
+            "rust" if lower.contains("gnu") => "Rustlang.Rust.GNU".into(),
             "rust" => "Rustlang.Rust.MSVC".into(),
             "go" => "GoLang.Go".into(),
             "java" => format!("EclipseAdoptium.Temurin.{}.JDK", self.major_version(4)?),
             "dotnet" => format!("Microsoft.DotNet.SDK.{}", self.major_version(2)?),
+            "ruby" if lower.contains("msys2") || lower.contains("devkit") => {
+                format!(
+                    "RubyInstallerTeam.RubyWithDevKit.{}",
+                    self.major_minor_version()?
+                )
+            }
+            "ruby" => format!("RubyInstallerTeam.Ruby.{}", self.major_minor_version()?),
+            "php" => format!("PHP.PHP.{}", self.major_minor_version()?),
+            "zig" => "zig.zig".into(),
+            "bun" => "Oven-sh.Bun".into(),
+            "deno" => "DenoLand.Deno".into(),
             "cmake" => "Kitware.CMake".into(),
+            "clang" => "LLVM.LLVM".into(),
+            "make" if lower.contains("gnuwin32") => "GnuWin32.Make".into(),
+            "make" => "ezwinports.make".into(),
+            "ninja" => "Ninja-build.Ninja".into(),
+            "meson" => "mesonbuild.meson".into(),
+            "just" => "Casey.Just".into(),
+            "protoc" => "Google.Protobuf".into(),
+            "docker" if lower.contains("desktop") => "Docker.DockerDesktop".into(),
+            "docker" => "Docker.DockerCLI".into(),
+            "podman" => "RedHat.Podman".into(),
+            "kubectl" => "Kubernetes.kubectl".into(),
+            "helm" => "Helm.Helm".into(),
+            "terraform" => "Hashicorp.Terraform".into(),
+            "sqlite" => "SQLite.SQLite".into(),
+            "neovim" => "Neovim.Neovim".into(),
+            "vim" => "vim.vim".into(),
+            "ripgrep" if lower.contains("gnu") => "BurntSushi.ripgrep.GNU".into(),
+            "ripgrep" => "BurntSushi.ripgrep.MSVC".into(),
+            "fd" => "sharkdp.fd".into(),
+            "bat" => "sharkdp.bat".into(),
+            "jq" => "jqlang.jq".into(),
+            "fzf" => "junegunn.fzf".into(),
+            "shellcheck" => "koalaman.shellcheck".into(),
+            "shfmt" => "mvdan.shfmt".into(),
+            "starship" => "Starship.Starship".into(),
+            "zoxide" => "ajeetdsouza.zoxide".into(),
+            "eza" => "eza-community.eza".into(),
             _ => return None,
         };
         Some(Package {
@@ -420,8 +593,14 @@ impl InstalledApplication {
             return Vec::new();
         }
         let mut directories = Vec::new();
+        let mut install_root = None;
         if let Some(location) = &self.install_location {
-            push_clean_dir(&mut directories, location);
+            let trimmed = location.trim().trim_matches('"');
+            if !trimmed.is_empty() {
+                let path = PathBuf::from(trimmed);
+                install_root = Some(path.clone());
+                directories.push(path);
+            }
         }
         if let Some(icon) = &self.display_icon {
             let icon = icon.trim().trim_matches('"');
@@ -451,16 +630,65 @@ impl InstalledApplication {
                 "mingw64/bin/git-lfs.exe",
             ],
             "gh" => &["gh.exe", "bin/gh.exe"],
+            "glab" => &["glab.exe", "bin/glab.exe"],
+            "lazygit" => &["lazygit.exe", "bin/lazygit.exe"],
+            "delta" => &["delta.exe", "bin/delta.exe"],
             "node" => &["node.exe"],
             "pnpm" => &["pnpm.exe", "pnpm.cmd"],
+            "yarn" => &["bin/yarn.cmd", "yarn.cmd", "yarn.exe"],
+            "uv" => &["uv.exe", "bin/uv.exe"],
+            "composer" => &["composer.bat", "composer.cmd", "bin/composer.bat"],
             "python" => &["python.exe", "python3.exe"],
             "rust" => &["bin/cargo.exe", "bin/rustc.exe", "cargo.exe", "rustc.exe"],
             "go" => &["bin/go.exe", "go.exe"],
             "java" => &["bin/java.exe", "bin/javac.exe", "java.exe", "javac.exe"],
             "dotnet" => &["dotnet.exe"],
+            "ruby" => &["bin/ruby.exe", "ruby.exe"],
+            "php" => &["php.exe", "bin/php.exe"],
+            "zig" => &["zig.exe", "bin/zig.exe"],
+            "bun" => &["bun.exe", "bin/bun.exe"],
+            "deno" => &["deno.exe", "bin/deno.exe"],
             "cmake" => &["bin/cmake.exe", "cmake.exe"],
+            "clang" => &["bin/clang.exe", "clang.exe"],
+            "make" => &["bin/make.exe", "make.exe"],
+            "ninja" => &["ninja.exe", "bin/ninja.exe"],
+            "meson" => &["meson.exe", "bin/meson.exe"],
+            "just" => &["just.exe", "bin/just.exe"],
+            "protoc" => &["bin/protoc.exe", "protoc.exe"],
+            "docker" => &["resources/bin/docker.exe", "bin/docker.exe", "docker.exe"],
+            "podman" => &["podman.exe", "bin/podman.exe"],
+            "kubectl" => &["kubectl.exe", "bin/kubectl.exe"],
+            "helm" => &["helm.exe", "bin/helm.exe"],
+            "terraform" => &["terraform.exe", "bin/terraform.exe"],
+            "sqlite" => &["sqlite3.exe", "bin/sqlite3.exe"],
+            "neovim" => &["bin/nvim.exe", "nvim.exe"],
+            "vim" => &["vim.exe", "bin/vim.exe"],
+            "ripgrep" => &["rg.exe", "bin/rg.exe"],
+            "fd" => &["fd.exe", "bin/fd.exe"],
+            "bat" => &["bat.exe", "bin/bat.exe"],
+            "jq" => &["jq.exe", "bin/jq.exe"],
+            "fzf" => &["fzf.exe", "bin/fzf.exe"],
+            "shellcheck" => &["shellcheck.exe", "bin/shellcheck.exe"],
+            "shfmt" => &["shfmt.exe", "bin/shfmt.exe"],
+            "starship" => &["starship.exe", "bin/starship.exe"],
+            "zoxide" => &["zoxide.exe", "bin/zoxide.exe"],
+            "eza" => &["eza.exe", "bin/eza.exe"],
             _ => &[],
         };
+        // Portable WinGet zip packages extract into a versioned child directory
+        // under InstallLocation (e.g. `ripgrep-14.1.1-.../rg.exe`).
+        if let Some(root) = install_root
+            && root.is_absolute()
+            && root.components().count() >= 4
+            && let Ok(entries) = std::fs::read_dir(&root)
+        {
+            for entry in entries.flatten().take(16) {
+                let child = entry.path();
+                if child.is_dir() {
+                    directories.push(child);
+                }
+            }
+        }
         let mut files: Vec<PathBuf> = directories
             .into_iter()
             .filter(|path| path.is_absolute())
@@ -479,6 +707,8 @@ impl InstalledApplication {
                     .filter(|path| path.is_absolute() && paths::is_executable(path)),
             );
         }
+        files.sort();
+        files.dedup();
         files
     }
 }

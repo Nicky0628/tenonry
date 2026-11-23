@@ -1,5 +1,4 @@
-/// Whether a tool exists on every supported platform. GCC is Linux-only because
-/// Windows builds use MSVC rather than a system GCC package.
+/// Whether a tool exists on every supported platform or only Linux (e.g. GCC, GDB, tmux, Ansible, direnv).
 #[derive(Clone, Copy)]
 pub(crate) enum Platforms {
     All,

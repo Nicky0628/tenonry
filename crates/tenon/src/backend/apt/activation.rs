@@ -16,6 +16,13 @@ pub(super) fn install_commands(tool_id: &str, package: &str) -> Result<Vec<Comma
                 .collect()
         }
         "gcc" => vec![("gcc", format!("/usr/bin/{package}"))],
+        "clang" => vec![("clang", format!("/usr/bin/{package}"))],
+        "ruby" => vec![("ruby", format!("/usr/bin/{package}"))],
+        "php" => {
+            let bin = package.strip_suffix("-cli").unwrap_or(package);
+            vec![("php", format!("/usr/bin/{bin}"))]
+        }
+        "zig" => vec![("zig", format!("/usr/bin/{package}"))],
         "python" => ["python", "python3"]
             .into_iter()
             .map(|program| (program, format!("/usr/bin/{package}")))
@@ -62,6 +69,10 @@ pub(super) fn cleanup_commands(tool: &ToolReport) -> Vec<Command> {
     let programs: &[&str] = match tool.status.id.as_str() {
         "go" => &["go", "gofmt"],
         "gcc" => &["gcc"],
+        "clang" => &["clang"],
+        "ruby" => &["ruby"],
+        "php" => &["php"],
+        "zig" => &["zig"],
         "python" => &["python", "python3"],
         _ => &[],
     };

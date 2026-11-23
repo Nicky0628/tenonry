@@ -140,7 +140,7 @@ impl BackendDriver for PacmanBackend {
     }
 
     fn is_protected_tool(&self, spec: &ToolSpec, packages: &[Package]) -> bool {
-        spec.id == "python" && !packages.is_empty()
+        matches!(spec.id, "python" | "curl") && !packages.is_empty()
     }
 
     fn authorization_issue(&self) -> Option<String> {

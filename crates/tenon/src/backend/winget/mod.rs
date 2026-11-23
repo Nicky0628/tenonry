@@ -262,6 +262,8 @@ impl BackendDriver for WingetBackend {
         let impact = match (action, spec.id) {
             (Action::Uninstall, _) => "移除该应用的所有已安装版本。",
             (Action::Update, "python") => "保持 Python 当前版本系列。",
+            (Action::Update, "ruby") => "保持 Ruby 当前版本系列。",
+            (Action::Update, "php") => "保持 PHP 当前版本系列。",
             _ => "",
         }
         .into();

@@ -38,13 +38,16 @@ pub(super) async fn available_packages(
     backend: &AptBackend,
     spec: &ToolSpec,
 ) -> Result<Vec<Package>> {
-    let prefix = mapping::version_query_prefix(spec.id);
-    let names = query_cache(backend, &process::args(&["pkgnames", prefix])).await?;
-    let mut names: Vec<_> = names
-        .lines()
-        .filter(|name| mapping::is_primary_package(spec.id, name))
-        .map(str::to_owned)
-        .collect();
+    let mut names = Vec::new();
+    for prefix in mapping::version_query_prefixes(spec.id) {
+        let output = query_cache(backend, &process::args(&["pkgnames", prefix])).await?;
+        names.extend(
+            output
+                .lines()
+                .filter(|name| mapping::is_primary_package(spec.id, name))
+                .map(str::to_owned),
+        );
+    }
     names.sort();
     names.dedup();
     if names.is_empty() {
@@ -117,7 +120,10 @@ pub(super) async fn list_versions(
             version: version_key(&package),
             label: package.version.clone(),
             current: tool.packages.contains(&package)
-                && registry::extract_release(&package.version) == active,
+                && active.as_deref().is_some_and(|active| {
+                    registry::extract_release(&package.version)
+                        .is_some_and(|release| registry::releases_match(&release, active))
+                }),
         })
         .collect();
     if !versions.iter().any(|version| version.current)
@@ -264,6 +270,26 @@ pub(super) async fn plan_version(
         preview,
         version: Some(version),
     })
+}
+
+pub(super) async fn newest_primary_package(
+    backend: &AptBackend,
+    spec: &ToolSpec,
+) -> Result<Option<String>> {
+    let candidates = available_packages(backend, spec).await?;
+    let best = candidates
+        .into_iter()
+        .filter_map(|pkg| {
+            let release = registry::extract_release(&pkg.version)?;
+            let parts: Vec<u64> = release
+                .split('.')
+                .map(|part| part.parse::<u64>().ok())
+                .collect::<Option<Vec<_>>>()?;
+            Some((parts, pkg.name))
+        })
+        .max_by(|(left, _), (right, _)| left.cmp(right))
+        .map(|(_, name)| name);
+    Ok(best)
 }
 
 fn installed_by_base_name(backend: &AptBackend, name: &str) -> Option<String> {

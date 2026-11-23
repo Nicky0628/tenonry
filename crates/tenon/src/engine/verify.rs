@@ -164,8 +164,9 @@ fn evaluate_single(
                                     .version
                                     .as_deref()
                                     .and_then(registry::extract_release)
-                                    .as_deref()
-                                    == Some(expected.as_str())
+                                    .is_some_and(|actual| {
+                                        registry::releases_match(&expected, &actual)
+                                    })
                             }))
             }
         });
