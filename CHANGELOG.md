@@ -7,6 +7,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.1.1] - 2026-11-27
+
+### Fixed
+
+- **npm cache revalidation**: Removed `--prefer-offline` from `npm` preflight and install commands so stale abbreviated packuments in `~/.npm/_cacache` no longer fail with `ETARGET` on newly published releases, with a single `--prefer-online` dry-run retry when a recently cached entry within `max-age` is missing the target version.
+- **npm error classification & resilience**: Parsed structured JSON error payloads (and npm 9/10/11 stderr error codes) on non-zero exits to classify `EBADENGINE`/`EBADPLATFORM`, `ETARGET`/`E404`, auth/permission, dependency conflict, and network errors accurately instead of misreporting every preflight failure as a Node.js/platform mismatch; kept fast-fail fetch flags (`--fetch-retries=0`, `--fetch-timeout=12000`) restricted to read-only probes rather than real `npm install` executions.
+- **APT version-selection & inventory parsing**: Added the missing `authorization_issue()` check in `apt::versions::plan_version`, and switched `dpkg-query` parsing in `AptBackend::detect()` to tab-delimited columns so not-installed entries with empty versions do not break APT detection.
+- **Cross-platform path & WinGet list parsing**: Normalized trailing backslashes in Windows path comparisons, allowed symlinked directories when verifying `npm`'s global `bin` directory on `PATH`, and updated WinGet list parsing to handle `< <version>` columns and reject truncated (`…`) upgrade versions.
+- **Desktop error summary patterns**: Removed WinGet `0x8A15002B` (`UPDATE_NOT_APPLICABLE`) from the cancelled-authorization pattern and added `ETARGET` to the missing package/version pattern.
+
 ## [0.1.0] - 2026-11-23
 
 ### Added
@@ -18,5 +28,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Cross-process file locking powered by standard library `std::fs::File` locks (Rust 1.89+).
 - Dual licensing under `MIT OR Apache-2.0`.
 
-[Unreleased]: https://github.com/Nicky0628/tenonry/compare/v0.1.0...HEAD
+[Unreleased]: https://github.com/Nicky0628/tenonry/compare/v0.1.1...HEAD
+[0.1.1]: https://github.com/Nicky0628/tenonry/compare/v0.1.0...v0.1.1
 [0.1.0]: https://github.com/Nicky0628/tenonry/releases/tag/v0.1.0
