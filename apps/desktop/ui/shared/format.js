@@ -217,7 +217,7 @@ const ERROR_PATTERNS = [
     hint: '请等待其他安装或更新任务完成后重试。',
   },
   {
-    match: /0x8a15002b|0x800704c7|dismissed|authorization.*cancel|已取消.*授权|退出码 126\b/i,
+    match: /0x800704c7|dismissed|authorization.*cancel|已取消.*授权|退出码 126\b/i,
     summary: '已取消系统授权，未修改本机软件。',
     hint: '',
   },
@@ -227,7 +227,7 @@ const ERROR_PATTERNS = [
     hint: '请确认当前账户具有相应权限后重试。',
   },
   {
-    match: /0x8a150014|no package found|e404|unable to locate package|no match for argument|target not found/i,
+    match: /0x8a150014|no package found|e404|etarget|unable to locate package|no match for argument|target not found/i,
     summary: '软件源中未找到对应的软件包或版本。',
     hint: '可先刷新软件源索引后再试。',
   },

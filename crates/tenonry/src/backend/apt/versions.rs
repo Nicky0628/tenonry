@@ -1,4 +1,5 @@
 use super::{AptBackend, activation, mapping, preflight};
+use crate::backend::BackendDriver;
 use crate::error::{Error, Result};
 use crate::infra::process;
 use crate::model::{
@@ -233,6 +234,9 @@ pub(super) async fn plan_version(
     }
 
     let preview = preflight::simulate_replacement(backend, action, targets).await?;
+    if let Some(issue) = backend.authorization_issue() {
+        return Err(Error::authorization(issue));
+    }
     let mut commands = Vec::new();
     if preview.state != PreviewState::Current {
         let mut args = backend.execution_catalog_arguments();

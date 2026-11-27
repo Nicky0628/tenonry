@@ -39,10 +39,8 @@ pub(super) async fn prepare(
             for line in output.stdout.lines() {
                 let words: Vec<_> = line.split_whitespace().collect();
                 if let Some(index) = words.iter().position(|word| *word == name) {
-                    candidate = words
-                        .get(index + 2)
-                        .filter(|word| **word != "winget")
-                        .map(|word| (*word).to_owned());
+                    candidate = parse_upgrade_columns(&words[index + 1..], false)
+                        .and_then(|(_, available)| available);
                     if candidate.is_none() {
                         return Err(Error::internal("WinGet 未返回明确的升级版本。"));
                     }
@@ -181,21 +179,17 @@ pub(super) async fn check_updates(
                 })
                 .collect();
             let target = match rows.as_slice() {
-                [(matched_id, row)]
-                    if matches!(row.len(), 2 | 3)
-                        && row.last() == Some(&"winget")
-                        && row[..row.len() - 1]
-                            .iter()
-                            .all(|field| field.chars().any(|ch| ch.is_ascii_digit()))
-                        && !row.iter().any(|field| field.contains('…')) =>
-                {
-                    Ok(Change {
+                [(matched_id, row)] => match parse_upgrade_columns(row, true) {
+                    Some((installed, available)) => Ok(Change {
                         name: matched_id.clone(),
-                        installed: Some(row[0].into()),
-                        candidate: Some(row[if row.len() == 3 { 1 } else { 0 }].into()),
+                        installed: Some(installed.clone()),
+                        candidate: Some(available.unwrap_or(installed)),
                         dependency: false,
-                    })
-                }
+                    }),
+                    None => Err(Error::internal(format!(
+                        "WinGet 没有返回 {name} 的明确更新状态，请刷新后重试。"
+                    ))),
+                },
                 _ => Err(Error::internal(format!(
                     "WinGet 没有返回 {name} 的明确更新状态，请刷新后重试。"
                 ))),
@@ -203,4 +197,34 @@ pub(super) async fn check_updates(
             (name.clone(), target)
         })
         .collect())
+}
+
+fn is_complete_version_token(token: &str) -> bool {
+    !token.contains('…') && token.chars().any(|ch| ch.is_ascii_digit())
+}
+
+/// Parses the version columns after a package ID in `winget list` output:
+/// `[<] <installed> [<available>] [winget]`.
+fn parse_upgrade_columns(row: &[&str], require_source: bool) -> Option<(String, Option<String>)> {
+    let columns = if row.last() == Some(&"winget") {
+        &row[..row.len() - 1]
+    } else if require_source {
+        return None;
+    } else {
+        row
+    };
+    let (installed, rest) = match columns {
+        ["<", version, rest @ ..] if is_complete_version_token(version) => {
+            (format!("< {version}"), rest)
+        }
+        [version, rest @ ..] if is_complete_version_token(version) => ((*version).to_owned(), rest),
+        _ => return None,
+    };
+    match rest {
+        [] => Some((installed, None)),
+        [available] if is_complete_version_token(available) => {
+            Some((installed, Some((*available).to_owned())))
+        }
+        _ => None,
+    }
 }

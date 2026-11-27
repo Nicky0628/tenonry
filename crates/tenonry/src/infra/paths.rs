@@ -30,17 +30,25 @@ pub(crate) fn clean_path(path: &Path) -> PathBuf {
     }
 }
 
-/// Compare command directories using Windows' case and extended-path conventions.
+/// Compare command paths using Windows' case, trailing-separator, and extended-path conventions.
 pub(crate) fn same_path(left: &Path, right: &Path) -> bool {
     #[cfg(windows)]
     {
-        clean_path(left).to_string_lossy().to_lowercase()
-            == clean_path(right).to_string_lossy().to_lowercase()
+        normalize_windows_compare(left) == normalize_windows_compare(right)
     }
     #[cfg(not(windows))]
     {
         left == right
     }
+}
+
+#[cfg(windows)]
+fn normalize_windows_compare(path: &Path) -> String {
+    let mut normalized = clean_path(path).to_string_lossy().to_lowercase();
+    while normalized.ends_with('\\') && normalized.len() > 3 && !normalized.ends_with(":\\") {
+        normalized.pop();
+    }
+    normalized
 }
 
 pub(crate) fn is_executable(path: &Path) -> bool {

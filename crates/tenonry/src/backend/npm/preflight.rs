@@ -1,4 +1,4 @@
-use super::{NpmBackend, mapping, metadata};
+use super::{NpmBackend, NpmJsonFailure, mapping, metadata};
 use crate::backend::{BackendContext, common};
 use crate::error::{Error, Result};
 use crate::infra::{paths, privilege, process};
@@ -61,14 +61,21 @@ pub(super) async fn prepare(
             "npm 全局目录需要系统授权，但当前系统没有可用的授权组件。",
         ));
     }
+    let bin_dir = npm.bin_directory();
+    let resolved_bin_dir = bin_dir.exists().then(|| paths::resolved(&bin_dir));
     if candidate.is_some()
         && !std::env::var_os("PATH").is_some_and(|path| {
-            std::env::split_paths(&path).any(|entry| paths::same_path(&entry, &npm.bin_directory()))
+            std::env::split_paths(&path).any(|entry| {
+                paths::same_path(&entry, &bin_dir)
+                    || resolved_bin_dir.as_ref().is_some_and(|resolved| {
+                        entry.exists() && paths::same_path(&paths::resolved(&entry), resolved)
+                    })
+            })
         })
     {
         return Err(Error::conflict(format!(
             "npm 命令目录 {} 不在当前进程的 PATH 中。",
-            npm.bin_directory().display()
+            bin_dir.display()
         )));
     }
 
@@ -87,20 +94,26 @@ pub(super) async fn prepare(
             .map_or_else(|| name.to_owned(), |version| format!("{name}@{version}")),
     );
     args.extend(process::args(&["--engine-strict", "--foreground-scripts"]));
-    if candidate.is_some() {
-        // Targets are exact versions. Reuse verified npm cache entries while still
-        // fetching missing data and enforcing engines during the dry run/install.
-        args.push("--prefer-offline".into());
-    }
 
     if !unchanged && candidate.is_some() {
         let mut preview_args = args.clone();
         preview_args.extend(process::args(&["--dry-run", "--ignore-scripts", "--json"]));
-        npm.dry_run_json(&preview_args).await.map_err(|error| {
-            Error::conflict(format!(
-                "所选版本的安装条件未通过，请检查 Node.js 版本及平台支持。\n{error}"
-            ))
-        })?;
+        let preview = match npm.dry_run_json(&preview_args).await {
+            Ok(value) => Ok(value),
+            Err(NpmJsonFailure::Npm(failure)) if failure.is_code("ETARGET") => {
+                // npm install uses the abbreviated packument cache key (separate from
+                // `npm view`). If a recently cached entry within max-age lacks a newly
+                // published release, revalidate once online while keeping plan commands
+                // deterministic.
+                let mut online_args = preview_args;
+                online_args.push("--prefer-online".into());
+                npm.dry_run_json(&online_args).await
+            }
+            Err(error) => Err(error),
+        };
+        if let Err(error) = preview {
+            return Err(error.into_error("npm 预检失败。"));
+        }
     }
 
     let targets = vec![Change {
@@ -121,7 +134,7 @@ pub(super) async fn prepare(
     } else {
         vec![Command {
             program: npm.node.to_string_lossy().into_owned(),
-            arguments: npm.arguments(&args),
+            arguments: npm.execution_arguments(&args),
             administrator,
         }]
     };

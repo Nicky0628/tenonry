@@ -49,19 +49,24 @@ impl AptBackend {
 
         let mut installed = Vec::new();
         for line in text.lines() {
-            let fields: Vec<_> = line.split_whitespace().collect();
+            let fields: Vec<_> = line.split('\t').collect();
             if fields.len() != 3 {
                 return Err(Error::internal("无法解析系统包状态，请先检查 APT。"));
             }
-            if fields[0].ends_with('c') || fields[0].ends_with('n') {
+            let status = fields[0].trim_end();
+            if status.ends_with('c') || status.ends_with('n') {
                 continue;
             }
-            if !fields[0].ends_with('i') {
+            if !status.ends_with('i') {
                 return Err(Error::conflict(
                     "系统包存在未完成的安装或配置，请先通过 APT 修复，再管理环境。",
                 ));
             }
-            let name = fields[1];
+            let name = fields[1].trim();
+            let version = fields[2].trim();
+            if name.is_empty() || version.is_empty() {
+                return Err(Error::internal("无法解析系统包状态，请先检查 APT。"));
+            }
             if !common::is_valid_package_name(name) {
                 return Err(Error::conflict(
                     "系统包记录包含无法识别的包名，未开放环境修改。",
@@ -69,7 +74,7 @@ impl AptBackend {
             }
             installed.push(Package {
                 name: name.into(),
-                version: fields[2].into(),
+                version: version.into(),
             });
         }
         installed.sort_by(|a, b| (&a.name, &a.version).cmp(&(&b.name, &b.version)));

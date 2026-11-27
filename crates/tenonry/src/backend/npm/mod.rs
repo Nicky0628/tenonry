@@ -21,15 +21,194 @@ pub(super) struct NpmInstallation {
     global_config: PathBuf,
 }
 
+#[derive(Debug, Clone)]
+pub(super) struct NpmCommandError {
+    pub(super) code: Option<String>,
+    pub(super) summary: Option<String>,
+    pub(super) detail: Option<String>,
+    pub(super) raw: String,
+}
+
+impl NpmCommandError {
+    pub(super) fn is_code(&self, expected: &str) -> bool {
+        self.code
+            .as_deref()
+            .is_some_and(|code| code.eq_ignore_ascii_case(expected))
+    }
+
+    pub(super) fn formatted_detail(&self) -> String {
+        let mut parts = Vec::new();
+        let code = self
+            .code
+            .as_deref()
+            .map(str::trim)
+            .filter(|s| !s.is_empty());
+        let summary = self
+            .summary
+            .as_deref()
+            .map(str::trim)
+            .filter(|s| !s.is_empty());
+        let detail = self
+            .detail
+            .as_deref()
+            .map(str::trim)
+            .filter(|s| !s.is_empty());
+
+        match (code, summary) {
+            (Some(code), Some(summary)) => parts.push(format!("npm {code}: {summary}")),
+            (Some(code), None) => parts.push(format!("npm {code}")),
+            (None, Some(summary)) => parts.push(summary.to_owned()),
+            (None, None) => {}
+        }
+        if let Some(detail) = detail
+            && summary != Some(detail)
+        {
+            parts.push(detail.to_owned());
+        }
+        if parts.is_empty() {
+            self.raw.clone()
+        } else {
+            parts.join("\n")
+        }
+    }
+
+    pub(super) fn into_error(self, fallback_prefix: &str) -> Error {
+        let detail = self.formatted_detail();
+        let code = self.code.as_deref().unwrap_or("");
+        let summary = self.summary.as_deref().unwrap_or("");
+
+        if code.eq_ignore_ascii_case("EBADENGINE") || code.eq_ignore_ascii_case("EBADPLATFORM") {
+            return Error::conflict(format!(
+                "所选版本的安装条件未通过，请检查 Node.js 版本及平台支持。\n{detail}"
+            ));
+        }
+        if code.eq_ignore_ascii_case("ETARGET") || code.eq_ignore_ascii_case("E404") {
+            return Error::not_found(format!(
+                "npm 软件源中未找到目标软件包或版本，请刷新后重试。\n{detail}"
+            ));
+        }
+        if matches!(code.to_ascii_uppercase().as_str(), "E401" | "E403" | "EOTP") {
+            return Error::authorization(format!(
+                "npm 软件源拒绝访问或需要认证，请检查软件源与登录配置。\n{detail}"
+            ));
+        }
+        if code.eq_ignore_ascii_case("EACCES") || code.eq_ignore_ascii_case("EPERM") {
+            return Error::authorization(format!(
+                "npm 缺少所需目录权限，请检查缓存或全局目录权限。\n{detail}"
+            ));
+        }
+        if code.eq_ignore_ascii_case("ERESOLVE") {
+            return Error::conflict(format!("npm 依赖解析冲突，无法完成操作。\n{detail}"));
+        }
+        if matches!(
+            code.to_ascii_uppercase().as_str(),
+            "ENOTFOUND"
+                | "ETIMEDOUT"
+                | "ECONNREFUSED"
+                | "ECONNRESET"
+                | "EAI_AGAIN"
+                | "EHOSTUNREACH"
+                | "ENETUNREACH"
+                | "ESOCKETTIMEDOUT"
+                | "ERR_SOCKET_TIMEOUT"
+                | "FETCH_ERROR"
+        ) || summary.contains("FetchError")
+        {
+            return Error::command_failed(format!(
+                "无法连接 npm 软件源，请检查网络、代理或软件源配置。\n{detail}"
+            ));
+        }
+
+        Error::command_failed(format!("{fallback_prefix}\n{detail}"))
+    }
+}
+
+pub(super) enum NpmJsonFailure {
+    Npm(NpmCommandError),
+    Other(Error),
+}
+
+impl NpmJsonFailure {
+    pub(super) fn into_error(self, fallback_prefix: &str) -> Error {
+        match self {
+            Self::Npm(failure) => failure.into_error(fallback_prefix),
+            Self::Other(error) => error,
+        }
+    }
+}
+
+fn parse_json_object(text: &str) -> Option<Value> {
+    let trimmed = text.trim();
+    serde_json::from_str::<Value>(trimmed)
+        .ok()
+        .filter(Value::is_object)
+        .or_else(|| {
+            // npm 11 prints summary lines (e.g. `add pnpm 10.33.0`) before the JSON object.
+            trimmed.match_indices('\n').find_map(|(index, _)| {
+                let tail = trimmed[index + 1..].trim_start();
+                tail.starts_with('{')
+                    .then(|| serde_json::from_str::<Value>(tail).ok())
+                    .flatten()
+                    .filter(Value::is_object)
+            })
+        })
+}
+
+fn extract_stderr_npm_code(text: &str) -> Option<String> {
+    text.lines().find_map(|line| {
+        let rest = line
+            .trim_start()
+            .strip_prefix("npm ERR! code ")
+            .or_else(|| line.trim_start().strip_prefix("npm error code "))?;
+        let code = rest.split_whitespace().next()?;
+        (!code.is_empty()).then(|| code.to_owned())
+    })
+}
+
+fn extract_npm_error(parsed: Option<&Value>, raw: String) -> NpmCommandError {
+    if let Some(error) = parsed.and_then(|value| value.get("error")) {
+        if let Some(object) = error.as_object() {
+            return NpmCommandError {
+                code: object
+                    .get("code")
+                    .and_then(Value::as_str)
+                    .map(str::to_owned)
+                    .or_else(|| extract_stderr_npm_code(&raw)),
+                summary: object
+                    .get("summary")
+                    .and_then(Value::as_str)
+                    .map(str::to_owned),
+                detail: object
+                    .get("detail")
+                    .and_then(Value::as_str)
+                    .map(str::to_owned),
+                raw,
+            };
+        }
+        if let Some(summary) = error.as_str() {
+            return NpmCommandError {
+                code: extract_stderr_npm_code(&raw),
+                summary: Some(summary.to_owned()),
+                detail: None,
+                raw,
+            };
+        }
+    }
+    NpmCommandError {
+        code: extract_stderr_npm_code(&raw),
+        summary: None,
+        detail: None,
+        raw,
+    }
+}
+
 impl NpmInstallation {
-    pub(super) fn arguments(&self, args: &[String]) -> Vec<String> {
+    fn base_arguments(&self, args: &[String]) -> Vec<String> {
         let mut result = vec![self.cli.to_string_lossy().into_owned()];
         result.extend_from_slice(args);
         result.extend([
             format!("--prefix={}", self.prefix.display()),
             format!("--registry={}", self.registry),
-            "--fetch-retries=0".into(),
-            "--fetch-timeout=12000".into(),
             "--no-audit".into(),
             "--no-fund".into(),
             "--update-notifier=false".into(),
@@ -37,29 +216,58 @@ impl NpmInstallation {
         result
     }
 
-    pub(super) async fn json(&self, args: &[String]) -> Result<Value> {
-        let output = process::run(&self.node, &self.arguments(args), false)
-            .await?
-            .checked_stdout()?;
-        serde_json::from_str(&output)
-            .map_err(|_| Error::internal("npm 未返回完整的 JSON 信息，请检查 npm 后重试。"))
+    /// Arguments for bounded read-only probes (`npm view`, `--dry-run`).
+    pub(super) fn probe_arguments(&self, args: &[String]) -> Vec<String> {
+        let mut result = self.base_arguments(args);
+        result.extend(["--fetch-retries=0".into(), "--fetch-timeout=12000".into()]);
+        result
     }
 
-    pub(super) async fn dry_run_json(&self, args: &[String]) -> Result<Value> {
+    /// Arguments for real install/uninstall execution (preserves npm's retry/timeout resilience).
+    pub(super) fn execution_arguments(&self, args: &[String]) -> Vec<String> {
+        self.base_arguments(args)
+    }
+
+    pub(super) async fn json(&self, args: &[String]) -> Result<Value> {
+        let output = process::run(&self.node, &self.probe_arguments(args), false).await?;
+        let parsed = parse_json_object(&output.stdout);
+        if !output.status.success() {
+            let raw = output
+                .checked()
+                .err()
+                .map_or_else(String::new, |error| error.message);
+            return Err(
+                extract_npm_error(parsed.as_ref(), raw).into_error("读取 npm 软件包信息失败。")
+            );
+        }
+        let parsed = parsed
+            .ok_or_else(|| Error::internal("npm 未返回完整的 JSON 信息，请检查 npm 后重试。"))?;
+        if parsed.get("error").is_some() {
+            return Err(extract_npm_error(Some(&parsed), output.text)
+                .into_error("读取 npm 软件包信息失败。"));
+        }
+        Ok(parsed)
+    }
+
+    pub(super) async fn dry_run_json(
+        &self,
+        args: &[String],
+    ) -> std::result::Result<Value, NpmJsonFailure> {
         // npm 9 cannot dry-run a global install before prefix/lib exists. Probe an
         // empty temporary prefix instead of creating directories in the real one.
-        let temporary =
-            if self
-                .root
-                .try_exists()
-                .map_err(|error| Error::persistence(format!("无法检查 npm 全局目录：{error}")))?
-            {
-                None
-            } else {
-                Some(tempfile::tempdir().map_err(|error| {
-                    Error::persistence(format!("无法准备 npm 预检目录：{error}"))
-                })?)
-            };
+        let temporary = if self.root.try_exists().map_err(|error| {
+            NpmJsonFailure::Other(Error::persistence(format!(
+                "无法检查 npm 全局目录：{error}"
+            )))
+        })? {
+            None
+        } else {
+            Some(tempfile::tempdir().map_err(|error| {
+                NpmJsonFailure::Other(Error::persistence(format!(
+                    "无法准备 npm 预检目录：{error}"
+                )))
+            })?)
+        };
         let mut installation = self.clone();
         if let Some(directory) = &temporary {
             installation.prefix = directory.path().to_path_buf();
@@ -68,35 +276,39 @@ impl NpmInstallation {
             } else {
                 installation.prefix.join("lib/node_modules")
             };
-            std::fs::create_dir_all(&installation.root)
-                .map_err(|error| Error::persistence(format!("无法准备 npm 预检目录：{error}")))?;
+            std::fs::create_dir_all(&installation.root).map_err(|error| {
+                NpmJsonFailure::Other(Error::persistence(format!(
+                    "无法准备 npm 预检目录：{error}"
+                )))
+            })?;
         }
-        let mut arguments = installation.arguments(args);
+        let mut arguments = installation.probe_arguments(args);
         if temporary.is_some() {
             // Changing prefix also changes npm's default global npmrc path. Keep
             // the real configuration (proxy, CA, authentication) for the preview.
             arguments.push(format!("--globalconfig={}", self.global_config.display()));
         }
         let output = process::run(&installation.node, &arguments, false)
-            .await?
-            .checked_stdout()?;
-        let trimmed = output.trim();
-        let parsed = serde_json::from_str::<Value>(trimmed)
-            .ok()
-            .filter(Value::is_object)
-            .or_else(|| {
-                // npm 11 prints summary lines (e.g. `add pnpm 10.33.0`) before the JSON object.
-                trimmed.match_indices('\n').find_map(|(index, _)| {
-                    let tail = trimmed[index + 1..].trim_start();
-                    tail.starts_with('{')
-                        .then(|| serde_json::from_str::<Value>(tail).ok())
-                        .flatten()
-                        .filter(Value::is_object)
-                })
-            })
-            .ok_or_else(|| Error::internal("npm 未返回完整的 JSON 信息，请检查 npm 后重试。"))?;
+            .await
+            .map_err(NpmJsonFailure::Other)?;
+        let parsed = parse_json_object(&output.stdout);
+        if !output.status.success() {
+            let raw = output
+                .checked()
+                .err()
+                .map_or_else(String::new, |error| error.message);
+            return Err(NpmJsonFailure::Npm(extract_npm_error(parsed.as_ref(), raw)));
+        }
+        let parsed = parsed.ok_or_else(|| {
+            NpmJsonFailure::Other(Error::internal(
+                "npm 未返回完整的 JSON 信息，请检查 npm 后重试。",
+            ))
+        })?;
         if parsed.get("error").is_some() {
-            return Err(Error::command_failed("npm 预检返回了错误。"));
+            return Err(NpmJsonFailure::Npm(extract_npm_error(
+                Some(&parsed),
+                output.text,
+            )));
         }
         Ok(parsed)
     }
